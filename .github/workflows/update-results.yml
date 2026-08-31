@@ -2,7 +2,7 @@ name: Update Survey Results
 
 on:
   schedule:
-    # GitHub Actions requires a minimum of 5 minutes for cron schedules
+    # GitHub Actions cron: 5 minutes with internal 2-minute loop
     - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
@@ -34,7 +34,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Run up to 2 iterations (every 2 minutes) per 5-minute scheduled run
+          # Run 2 iterations (every 2 minutes) per 5-minute scheduled run
           for i in 1 2; do
             echo "=== Starting update iteration $i ==="
             node scripts/update-results.js
@@ -44,6 +44,7 @@ jobs:
               echo "No changes to results.json in iteration $i"
             else
               git commit -m "chore: update survey results [skip ci]"
+              git pull --rebase origin main || true
               git push
             fi
             
