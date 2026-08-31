@@ -187,7 +187,7 @@ const POSTS=[
  {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
 ];
 
-const PROXY_HOST="https://proxy.vlyx.workers.dev";
+const RSS_ENDPOINT="/api/reddit-rss";
 const ATOM_NS="http://www.w3.org/2005/Atom";
 const MAX_RETRIES=3;
 const RETRY_DELAYS=[1,2,4];
@@ -312,12 +312,12 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 
 async function fetchPost(post,index){
  const rssUrl=makeRssUrl(post.url);
- const proxyUrl=PROXY_HOST+"/?url="+encodeURIComponent(rssUrl);
+ const endpointUrl=RSS_ENDPOINT+"?url="+encodeURIComponent(rssUrl);
 
  for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
   try{
    showStatus(`Loading ${index+1}/${POSTS.length}…`);
-   const response=await fetch(proxyUrl,{method:"GET",cache:"no-store"});
+   const response=await fetch(endpointUrl,{method:"GET",cache:"no-store"});
    const text=await response.text();
 
    if(!response.ok){
@@ -370,6 +370,7 @@ async function loadSurvey(){
  bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
  showStatus(`Loading 0/${POSTS.length}…`);
 
+ let successfulPosts=0;
  for(let i=0;i<POSTS.length;i++){
   try{
    const entries=await fetchPost(POSTS[i],i);
@@ -377,6 +378,7 @@ async function loadSurvey(){
     const raw=normalizeVote(e.content);
     if(raw)state.rawVotes.push(raw);
    });
+   successfulPosts++;
    showStatus(`Loading ${i+1}/${POSTS.length}…`);
    // Results remain covered until every post has finished.
   }catch(e){
@@ -384,11 +386,16 @@ async function loadSurvey(){
   }
  }
 
- render();
- setLastFetchTime();
- startReloadCooldown();
- showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses`);
- setTimeout(hideStatus,900);
+ if(successfulPosts){
+  render();
+  setLastFetchTime();
+  startReloadCooldown();
+  showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses`);
+  setTimeout(hideStatus,900);
+ }else{
+  showStatus("Reddit is temporarily unavailable. Please try again shortly.");
+  setTimeout(hideStatus,2500);
+ }
 }
 
 function setCjpHidden(hidden){
