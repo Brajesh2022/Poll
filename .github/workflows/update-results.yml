@@ -2,7 +2,8 @@ name: Update Survey Results
 
 on:
   schedule:
-    - cron: '*/2 * * * *'
+    # GitHub Actions supports a minimum schedule interval of 5 minutes (*/5 * * * *)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
     branches:
@@ -38,5 +39,6 @@ jobs:
             echo "No changes to results.json"
           else
             git commit -m "chore: update survey results fallback [skip ci]"
+            git pull --rebase origin main || true
             git push
           fi
