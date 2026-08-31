@@ -86,39 +86,43 @@
 <div class="w-full h-[1.5px] bg-[#cbc3af] mb-7 sm:mb-8"></div>
 </header>
 
-<div id="poll-rows-container" class="relative z-10 flex flex-col space-y-6 sm:space-y-8 flex-1">
+<div id="poll-rows-container" class="relative z-10 flex flex-col gap-4 sm:gap-5 flex-1 justify-center my-3 sm:my-5">
 
-<div id="row-bjp" class="flex items-center gap-3 sm:gap-4 transition-all duration-300">
-<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div id="row-bjp" class="flex items-center gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-lg bg-[#e7e1d3]/50 border border-[#dad2c0]/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300">
+<div class="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-bjp opacity-85 scale-110"></div>
-<img src="https://upload.wikimedia.org/wikipedia/hi/e/ec/Bharatiya_Janata_Party_logo.svg.png?utm_source=hi.wikipedia.org&utm_campaign=index&utm_content=original" alt="BJP Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
+<img src="https://upload.wikimedia.org/wikipedia/hi/e/ec/Bharatiya_Janata_Party_logo.svg.png?utm_source=hi.wikipedia.org&utm_campaign=index&utm_content=original" alt="BJP Logo" onerror="this.style.display='none'" class="relative z-10 w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-sm">
 </div>
-<div class="flex-1 min-w-0 pr-1 sm:pr-2">
-<div class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none mb-2.5 uppercase">BJP / NDA</div>
-<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-bjp" class="poll-bar h-full bg-[#eb5407] rounded-md" style="width:0%"></div></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between h-7 mb-1.5 sm:mb-2">
+<span class="font-oswald text-xl sm:text-2xl font-extrabold text-[#1a1715] tracking-tight leading-none uppercase">BJP / NDA</span>
 </div>
-<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
-<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#eb5407] leading-none brush-underline"><span id="num-bjp">0</span>%</span></div>
+<div class="w-full bg-[#d7d0c0] h-5 sm:h-6 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-bjp" class="poll-bar h-full bg-[#eb5407] rounded-md" style="width:0%"></div></div>
+</div>
+<div class="w-[1.5px] h-10 sm:h-11 bg-[#cfc8b6] shrink-0 self-center"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right flex items-center justify-end"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#eb5407] leading-none brush-underline"><span id="num-bjp">0</span>%</span></div>
 </div>
 
-<div id="row-inc" class="flex items-center gap-3 sm:gap-4 transition-all duration-300">
-<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div id="row-inc" class="flex items-center gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-lg bg-[#e7e1d3]/50 border border-[#dad2c0]/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300">
+<div class="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-inc opacity-90 scale-110"></div>
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Indian_National_Congress_hand_logo.svg/250px-Indian_National_Congress_hand_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=parser&utm_content=thumbnail" alt="INC Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Indian_National_Congress_hand_logo.svg/250px-Indian_National_Congress_hand_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=parser&utm_content=thumbnail" alt="INC Logo" onerror="this.style.display='none'" class="relative z-10 w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-sm">
 </div>
-<div class="flex-1 min-w-0 pr-1 sm:pr-2">
-<div class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none mb-2.5 uppercase">INC / INDIA</div>
-<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-inc" class="poll-bar h-full bg-[#0d4f9b] rounded-md" style="width:0%"></div></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between h-7 mb-1.5 sm:mb-2">
+<span class="font-oswald text-xl sm:text-2xl font-extrabold text-[#1a1715] tracking-tight leading-none uppercase">INC / INDIA</span>
 </div>
-<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
-<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#0d4f9b] leading-none brush-underline"><span id="num-inc">0</span>%</span></div>
+<div class="w-full bg-[#d7d0c0] h-5 sm:h-6 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-inc" class="poll-bar h-full bg-[#0d4f9b] rounded-md" style="width:0%"></div></div>
+</div>
+<div class="w-[1.5px] h-10 sm:h-11 bg-[#cfc8b6] shrink-0 self-center"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right flex items-center justify-end"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#0d4f9b] leading-none brush-underline"><span id="num-inc">0</span>%</span></div>
 </div>
 
 <div id="cjp-full-row-wrapper" class="collapse-transition overflow-hidden transition-all duration-300">
-<div class="flex items-center gap-3 sm:gap-4">
-<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div class="flex items-center gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-lg bg-[#e7e1d3]/50 border border-[#dad2c0]/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+<div class="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-cjp opacity-85 scale-110"></div>
-<div class="relative z-10 w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"><svg class="w-full h-full drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<div class="relative z-10 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center"><svg class="w-full h-full drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M45 22C37 11 21 7 13 5" stroke="#3b1f0d" stroke-width="1.8" stroke-linecap="round"/>
 <path d="M55 22C63 11 79 7 87 5" stroke="#3b1f0d" stroke-width="1.8" stroke-linecap="round"/>
 <path d="M39 31L20 20L10 24" stroke="#4a2710" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -139,25 +143,25 @@
 <path d="M58 45C56 58 56 70 51 80" stroke="#87471c" stroke-width="1" fill="none" opacity="0.6"/>
 </svg></div>
 </div>
-<div class="flex-1 min-w-0 pr-1 sm:pr-2">
-<div class="flex items-center gap-2 mb-2.5">
-<span class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none uppercase">CJP</span>
-<button id="hide-cjp-btn" type="button" class="cursor-pointer text-[#756f64] hover:text-[#1a1715] p-1 rounded" title="Hide CJP"><i class="fa-solid fa-eye-slash"></i></button>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between h-7 mb-1.5 sm:mb-2">
+<span class="font-oswald text-xl sm:text-2xl font-extrabold text-[#1a1715] tracking-tight leading-none uppercase">CJP</span>
+<button id="hide-cjp-btn" type="button" class="cursor-pointer text-[#756f64] hover:text-[#1a1715] transition-colors p-1 rounded -mr-1" title="Hide CJP"><i class="fa-solid fa-eye-slash text-xs sm:text-sm"></i></button>
 </div>
-<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-cjp" class="poll-bar h-full bg-[#582d82] rounded-md" style="width:0%"></div></div>
+<div class="w-full bg-[#d7d0c0] h-5 sm:h-6 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-cjp" class="poll-bar h-full bg-[#582d82] rounded-md" style="width:0%"></div></div>
 </div>
-<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
-<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#582d82] leading-none brush-underline"><span id="num-cjp">0</span>%</span></div>
+<div class="w-[1.5px] h-10 sm:h-11 bg-[#cfc8b6] shrink-0 self-center"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right flex items-center justify-end"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#582d82] leading-none brush-underline"><span id="num-cjp">0</span>%</span></div>
 </div>
 </div>
 
 <div id="cjp-restore-container" class="hidden transition-all duration-300">
-<button id="restore-cjp-btn" class="w-full py-2 px-3 border border-dashed border-[#a89f8a] rounded-md bg-[#e2dcce]/80 text-[#582d82] text-xs font-bold font-oswald uppercase tracking-wider flex items-center justify-center gap-2"><i class="fa-solid fa-eye"></i> Include CJP</button>
+<button id="restore-cjp-btn" class="w-full py-2.5 px-3 border border-dashed border-[#a89f8a] rounded-lg bg-[#e5dfd1]/70 hover:bg-[#e2dcce] text-[#582d82] text-xs font-bold font-oswald uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-eye"></i> Include CJP</button>
 </div>
 </div>
 
-<div id="reload-btn-container" class="hidden relative z-10 my-4 flex items-center justify-center">
-<button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm">
+<div id="reload-btn-container" class="hidden relative z-10 my-3 flex items-center justify-center">
+<button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded-lg font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-[#d5cdbc] transition-colors">
 <i id="reload-icon" class="fa-solid fa-rotate-right"></i><span id="reload-label">Reload Poll</span><span id="reload-countdown" class="ml-1"></span>
 </button>
 </div>
