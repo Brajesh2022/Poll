@@ -58,7 +58,6 @@
     position:fixed!important;left:0;right:0;bottom:0;z-index:999;
     padding:9px 14px!important;background:rgba(238,233,223,.97);
     border-top:1px solid #cfc8b6!important;
-    
   }
 }
 
@@ -77,16 +76,14 @@
   <div class="loading-box">
     <div class="loading-spinner"></div>
     <div id="loading-title">Loading Survey</div>
-    <div id="loading-detail">Fetching Reddit data…</div>
+    <div id="loading-detail">Fetching latest poll results…</div>
   </div>
 </div>
-
 
 <main id="survey-card" class="paper-texture grunge-overlay relative w-full min-h-screen sm:min-h-0 sm:max-w-[560px] sm:shadow-2xl sm:rounded-sm sm:border sm:border-[#cfc8b6] overflow-hidden px-5 py-7 sm:p-9 flex flex-col justify-between">
 
 <div class="absolute -top-1 -right-2 w-64 sm:w-72 h-52 sm:h-56 pointer-events-none parliament-blend z-0 opacity-75 sm:opacity-80">
   <img src="https://img.magnific.com/premium-vector/new-indian-parliament-building-with-old-parliament-vector-illustration_667085-501.jpg" alt="Indian Parliament" onerror="this.style.display='none'" class="w-full h-full object-cover object-left-top">
-</div>
 </div>
 
 <header class="relative z-10">
@@ -175,44 +172,14 @@
 </div>
 
 <footer class="relative z-10 pt-3 flex justify-between items-center text-[10px] sm:text-xs text-[#524e46] font-extrabold tracking-wider uppercase border-t border-[#d8d1bf]">
-<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 2 MIN</span>
+<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 15 MIN</span>
 </footer>
 </main>
 
 <script>
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded', () => {
 
-let POSTS=[
- {id:"choose-1",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3auzc/choose/"},
- {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
-];
-
-async function loadPostsConfig(){
- try{
-  const res=await fetch("posts.json",{cache:"no-cache"});
-  if(res.ok){
-   const data=await res.json();
-   if(Array.isArray(data)&&data.length>0){
-    POSTS=data;
-   }
-  }
- }catch(e){
-  // Keep fallback POSTS
- }
-}
-
-const RSS_ENDPOINT="/api/rss";
-const ATOM_NS="http://www.w3.org/2005/Atom";
-const MAX_RETRIES=1;
-const RETRY_DELAYS=[3];
-
-const ANSWERS={
- "1":"INDIA","INDIA":"INDIA","INC":"INDIA","CONGRESS":"INDIA",
- "2":"NDA","NDA":"NDA","BJP":"NDA",
- "3":"CJP_INDIA","4":"CJP_NDA","CJP":"CJP"
-};
-
-const state={isCjpHidden:false,rawVotes:[]};
+const state = { isCjpHidden: false, rawVotes: [] };
 
 const RELOAD_COOLDOWN_MS = 60 * 1000;
 const CACHE_TIME_KEY = "electionSurvey2029:lastSuccessfulFetch";
@@ -254,274 +221,122 @@ function startReloadCooldown(){
   }, 250);
 }
 
-const $=id=>document.getElementById(id);
-const loadingCover=$("data-loading-cover");
-const loadingTitle=$("loading-title");
-const loadingDetail=$("loading-detail");
+const $ = id => document.getElementById(id);
+const loadingCover = $("data-loading-cover");
+const loadingTitle = $("loading-title");
+const loadingDetail = $("loading-detail");
 
-function showLoading(title,detail){
-  loadingTitle.textContent=title;
-  loadingDetail.textContent=detail;
+function showLoading(title, detail){
+  loadingTitle.textContent = title;
+  loadingDetail.textContent = detail;
   loadingCover.classList.remove("hidden");
 }
 function hideLoading(){
   loadingCover.classList.add("hidden");
 }
-const bjpBar=$("bar-bjp"),incBar=$("bar-inc"),cjpBar=$("bar-cjp");
-const bjpNum=$("num-bjp"),incNum=$("num-inc"),cjpNum=$("num-cjp");
+const bjpBar = $("bar-bjp"), incBar = $("bar-inc"), cjpBar = $("bar-cjp");
+const bjpNum = $("num-bjp"), incNum = $("num-inc"), cjpNum = $("num-cjp");
 
-const status=document.createElement("div");
-status.className="hidden";
-status.innerHTML='<span class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span id="live-status"></span>';
-document.body.appendChild(status);
-
-function showStatus(text){
-  $("live-status").textContent=text;
-  status.classList.remove("opacity-0");status.classList.add("opacity-100");
-  if (text.startsWith("Retrying")) {
-    showLoading("Retrying", text.replace("Retrying ",""));
-  } else {
-    showLoading("Loading Survey", text);
-  }
-}
-function hideStatus(){status.classList.remove("opacity-100");status.classList.add("opacity-0");hideLoading()}
-
-function makeRssUrl(value){
- const url=new URL(value.trim());
- if(!/(^|\.)reddit\.com$/i.test(url.hostname))throw Error("Not a Reddit URL");
- url.search="";url.hash="";
- url.pathname=url.pathname.replace(/\.(rss|json)$/i,"").replace(/\/+$/,"")+".rss";
- return url.href;
-}
-function children(parent,name){
- return Array.from(parent.children).filter(el=>el.localName===name&&(el.namespaceURI===ATOM_NS||!el.namespaceURI));
-}
-function child(parent,name){return children(parent,name)[0]||null}
-function textChild(parent,name){const el=child(parent,name);return el?el.textContent.trim():""}
-
-function parseFeed(xmlText){
- const xml=new DOMParser().parseFromString(xmlText,"application/xml");
- if(xml.getElementsByTagName("parsererror").length)throw Error("Invalid RSS");
- if(!xml.documentElement||xml.documentElement.localName!=="feed")throw Error("Not an Atom feed");
- return children(xml.documentElement,"entry").map(entry=>{
-  const id=textChild(entry,"id"),authorEl=child(entry,"author"),contentEl=child(entry,"content");
-  const linkEl=children(entry,"link").find(el=>el.getAttribute("href"));
-  return {id,type:id.startsWith("t3_")?"post":id.startsWith("t1_")?"comment":"other",
-   content:contentEl?contentEl.textContent:"",author:authorEl?textChild(authorEl,"name").replace(/^\/u\//,""):"",
-   link:linkEl?linkEl.getAttribute("href"):""};
- });
-}
-
-function normalizeVote(text){
- const value=String(text||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ").trim().toUpperCase().replace(/\s+/g," ");
- const clean=value.replace(/^[\s"'`*_.,:;!?()[\]{}<>-]+|[\s"'`*_.,:;!?()[\]{}<>-]+$/g,"");
- return ANSWERS[clean]||null;
-}
 function effectiveParty(raw){
- if(raw==="CJP_INDIA")return state.isCjpHidden?"INDIA":"CJP";
- if(raw==="CJP_NDA")return state.isCjpHidden?"NDA":"CJP";
- return raw;
-}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
-
-async function fetchPost(post,index,forceFresh=false){
- const rssUrl=makeRssUrl(post.url);
- const apiUrl=`${RSS_ENDPOINT}?url=${encodeURIComponent(rssUrl)}${forceFresh?"&fresh=1":""}`;
-
- for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
-  try{
-   showStatus(`Loading ${index+1}/${POSTS.length}…`);
-   const response=await fetch(apiUrl,{method:"GET"});
-   const text=await response.text();
-
-   if(!response.ok){
-    if(![429,500,502,503,504].includes(response.status)||attempt===MAX_RETRIES)
-      throw Error("HTTP "+response.status);
-   }else{
-    const isCached=response.headers.get("X-Cache")==="HIT";
-    return {entries:parseFeed(text),isCached};
-   }
-  }catch(error){
-   if(attempt===MAX_RETRIES)throw error;
-  }
-
-  const seconds=RETRY_DELAYS[attempt]||3;
-  for(let n=seconds;n>0;n--){
-   showStatus(`Retrying in ${n}s…`);
-   await sleep(1000);
-  }
- }
- throw Error("Fetch failed");
+  if(raw === "CJP_INDIA") return state.isCjpHidden ? "INDIA" : "CJP";
+  if(raw === "CJP_NDA") return state.isCjpHidden ? "NDA" : "CJP";
+  return raw;
 }
 
-function animateNumber(el,to){
- const from=parseInt(el.textContent,10)||0,start=performance.now(),duration=750;
- function tick(now){
-  const p=Math.min((now-start)/duration,1),e=1-Math.pow(1-p,3);
-  el.textContent=Math.round(from+(to-from)*e);
-  if(p<1)requestAnimationFrame(tick);
- }
- requestAnimationFrame(tick);
+function animateNumber(el, to){
+  const from = parseInt(el.textContent, 10) || 0, start = performance.now(), duration = 750;
+  function tick(now){
+    const p = Math.min((now - start) / duration, 1), e = 1 - Math.pow(1-p, 3);
+    el.textContent = Math.round(from + (to - from) * e);
+    if(p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function render(){
- const c={INDIA:0,NDA:0,CJP:0};
- state.rawVotes.forEach(v=>c[effectiveParty(v)]++);
- const total=c.INDIA+c.NDA+c.CJP;
+  const c = { INDIA: 0, NDA: 0, CJP: 0 };
+  state.rawVotes.forEach(v => c[effectiveParty(v)]++);
+  const total = c.INDIA + c.NDA + c.CJP;
 
- const india=total?Math.round(c.INDIA/total*100):0;
- const nda=total?Math.round(c.NDA/total*100):0;
- const cjp=total?Math.round(c.CJP/total*100):0;
+  const india = total ? Math.round(c.INDIA / total * 100) : 0;
+  const nda = total ? Math.round(c.NDA / total * 100) : 0;
+  const cjp = total ? Math.round(c.CJP / total * 100) : 0;
 
- bjpBar.style.width=india+"%";incBar.style.width=nda+"%";cjpBar.style.width=cjp+"%";
- animateNumber(bjpNum,india);animateNumber(incNum,nda);animateNumber(cjpNum,cjp);
- $("resp-count").textContent=total.toLocaleString("en-IN");
+  bjpBar.style.width = nda + "%";
+  incBar.style.width = india + "%";
+  cjpBar.style.width = cjp + "%";
+
+  animateNumber(bjpNum, nda);
+  animateNumber(incNum, india);
+  animateNumber(cjpNum, cjp);
+
+  $("resp-count").textContent = total.toLocaleString("en-IN");
 }
 
-function resolveUserVote(counts){
- let maxCount=0,winner=null,isTie=false;
- for(const vote in counts){
-  const count=counts[vote];
-  if(count>maxCount){
-   maxCount=count;
-   winner=vote;
-   isTie=false;
-  }else if(count===maxCount){
-   isTie=true;
+async function loadSurvey(){
+  showLoading("Loading Survey", "Fetching latest survey results…");
+  try {
+    const res = await fetch("results.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    state.rawVotes = Array.isArray(data.rawVotes) ? data.rawVotes : [];
+  } catch (err) {
+    console.error("Failed to load results.json:", err);
   }
- }
- return isTie?null:winner;
-}
 
-async function loadBakedFallbackResults(){
- try{
-  showLoading("Loading Fallback","Fetching baked survey results…");
-  const res=await fetch("results.json",{cache:"no-cache"});
-  if(!res.ok) throw Error("HTTP "+res.status);
-  const data=await res.json();
-  if(data&&Array.isArray(data.rawVotes)&&data.rawVotes.length>0){
-   state.rawVotes=data.rawVotes;
-   render();
-   setLastFetchTime();
-   startReloadCooldown();
-   showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses (Backup)`);
-   setTimeout(hideStatus,1000);
-   return true;
-  }
- }catch(e){
-  // Fallback failed
- }
- return false;
-}
-
-async function loadSurvey(forceFresh=false){
- showLoading(forceFresh?"Refreshing Survey":"Loading Survey",forceFresh?"Fetching fresh Reddit data…":"Fetching Reddit data…");
- await loadPostsConfig();
- state.rawVotes=[];
- bjpBar.style.width=incBar.style.width=cjpBar.style.width="0%";
- bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
- showStatus(`Loading 0/${POSTS.length}…`);
-
- const userVotes=new Map();
- let hadCachedResults=false;
- let successfulPosts=0;
-
- for(let i=0;i<POSTS.length;i++){
-  try{
-   const result=await fetchPost(POSTS[i],i,forceFresh);
-   if(result&&result.isCached) hadCachedResults=true;
-   const entries=result?result.entries:[];
-   entries.filter(e=>e.type==="comment").forEach(e=>{
-    const raw=normalizeVote(e.content);
-    if(!raw) return;
-    const username=(e.author||"").trim().toLowerCase();
-    if(!username||username==="[deleted]"||username==="automoderator") return;
-
-    if(!userVotes.has(username)){
-     userVotes.set(username,{});
-    }
-    const counts=userVotes.get(username);
-    counts[raw]=(counts[raw]||0)+1;
-   });
-   successfulPosts++;
-   showStatus(`Loading ${i+1}/${POSTS.length}…`);
-  }catch(e){
-   // Failed post
-  }
- }
-
- for(const counts of userVotes.values()){
-  const vote=resolveUserVote(counts);
-  if(vote){
-   state.rawVotes.push(vote);
-  }
- }
-
- // If all posts failed live fetch, fall back to baked results.json
- if(successfulPosts===0){
-  const usedFallback=await loadBakedFallbackResults();
-  if(usedFallback) return;
- }
-
- // If cached results yielded fewer than 50 responders, immediately fetch fresh live results
- if(!forceFresh && hadCachedResults && state.rawVotes.length < 50){
-  return await loadSurvey(true);
- }
-
- render();
- setLastFetchTime();
- startReloadCooldown();
- showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses`);
- setTimeout(hideStatus,900);
+  render();
+  setLastFetchTime();
+  startReloadCooldown();
+  setTimeout(hideLoading, 300);
 }
 
 function setCjpHidden(hidden){
- state.isCjpHidden=hidden;
- const wrapper=$("cjp-full-row-wrapper"),restore=$("cjp-restore-container");
+  state.isCjpHidden = hidden;
+  const wrapper = $("cjp-full-row-wrapper"), restore = $("cjp-restore-container");
 
- if(hidden){
-  wrapper.style.maxHeight=wrapper.scrollHeight+"px";
-  requestAnimationFrame(()=>{
-   wrapper.style.maxHeight="0px";
-   wrapper.style.opacity="0";
-   wrapper.style.transform="scaleY(.85)";
-   wrapper.style.pointerEvents="none";
-  });
-  setTimeout(()=>{
-   if(state.isCjpHidden){
-    wrapper.classList.add("hidden");
-    restore.classList.remove("hidden");
-   }
-  },350);
- }else{
-  restore.classList.add("hidden");
-  wrapper.classList.remove("hidden");
-  wrapper.style.pointerEvents="";
-  wrapper.style.maxHeight="0px";
-  wrapper.style.opacity="0";
-  wrapper.style.transform="scaleY(.85)";
-  requestAnimationFrame(()=>{
-   wrapper.style.maxHeight=wrapper.scrollHeight+"px";
-   wrapper.style.opacity="1";
-   wrapper.style.transform="scaleY(1)";
-  });
-  setTimeout(()=>{
-   if(!state.isCjpHidden){
-    wrapper.style.maxHeight="";
-   }
-  },350);
- }
- render();
+  if(hidden){
+    wrapper.style.maxHeight = wrapper.scrollHeight + "px";
+    requestAnimationFrame(() => {
+      wrapper.style.maxHeight = "0px";
+      wrapper.style.opacity = "0";
+      wrapper.style.transform = "scaleY(.85)";
+      wrapper.style.pointerEvents = "none";
+    });
+    setTimeout(() => {
+      if(state.isCjpHidden){
+        wrapper.classList.add("hidden");
+        restore.classList.remove("hidden");
+      }
+    }, 350);
+  } else {
+    restore.classList.add("hidden");
+    wrapper.classList.remove("hidden");
+    wrapper.style.pointerEvents = "";
+    wrapper.style.maxHeight = "0px";
+    wrapper.style.opacity = "0";
+    wrapper.style.transform = "scaleY(.85)";
+    requestAnimationFrame(() => {
+      wrapper.style.maxHeight = wrapper.scrollHeight + "px";
+      wrapper.style.opacity = "1";
+      wrapper.style.transform = "scaleY(1)";
+    });
+    setTimeout(() => {
+      if(!state.isCjpHidden){
+        wrapper.style.maxHeight = "";
+      }
+    }, 350);
+  }
+  render();
 }
 
-$("hide-cjp-btn").addEventListener("click",()=>setCjpHidden(true));
-$("restore-cjp-btn").addEventListener("click",()=>setCjpHidden(false));
-$("reload-poll-btn").addEventListener("click",()=>{
- if(!updateReloadButton()) return;
- const icon=$("reload-icon");
- icon.classList.add("rotate-180");
- setTimeout(()=>icon.classList.remove("rotate-180"),500);
- loadSurvey(true);
+$("hide-cjp-btn").addEventListener("click", () => setCjpHidden(true));
+$("restore-cjp-btn").addEventListener("click", () => setCjpHidden(false));
+$("reload-poll-btn").addEventListener("click", () => {
+  if(!updateReloadButton()) return;
+  const icon = $("reload-icon");
+  icon.classList.add("rotate-180");
+  setTimeout(() => icon.classList.remove("rotate-180"), 500);
+  loadSurvey();
 });
 
 loadSurvey();
