@@ -47,18 +47,13 @@
 }
 @keyframes surveySpin{to{transform:rotate(360deg)}}
 #loading-title{font-family:'Oswald',sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-#loading-detail{font-size:12px;font-weight:700;color:#6b655b;margin-top:5px;min-height:18px}
 @media(max-width:639px){
-  body{padding-bottom:0!important}
-}
-
-#reload-poll-btn:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-  transform:none!important;
-}
-#reload-countdown{
-  font-variant-numeric:tabular-nums;
+  body{padding-bottom:50px!important}
+  main>footer{
+    position:fixed!important;left:0;right:0;bottom:0;z-index:999;
+    padding:9px 14px!important;background:rgba(238,233,223,.97);
+    border-top:1px solid #cfc8b6!important;
+  }
 }
 </style>
 </head>
@@ -156,12 +151,6 @@
 </div>
 </div>
 
-<div id="reload-btn-container" class="hidden relative z-10 my-4 flex items-center justify-center">
-<button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm">
-<i id="reload-icon" class="fa-solid fa-rotate-right"></i><span id="reload-label">Reload Poll</span><span id="reload-countdown" class="ml-1"></span>
-</button>
-</div>
-
 <footer class="relative z-10 pt-3 flex justify-between items-center text-[10px] sm:text-xs text-[#524e46] font-extrabold tracking-wider uppercase border-t border-[#d8d1bf]">
 <span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 2 MIN</span>
 </footer>
@@ -187,17 +176,18 @@ function setLastFetchTime(){
 
 function updateReloadButton(){
   const button = $("reload-poll-btn");
+  if (!button) return true;
   const countdown = $("reload-countdown");
   const remaining = Math.max(0, RELOAD_COOLDOWN_MS - (Date.now() - getLastFetchTime()));
 
   if(remaining > 0){
     button.disabled = true;
-    countdown.textContent = "(" + Math.ceil(remaining / 1000) + "s)";
+    if (countdown) countdown.textContent = "(" + Math.ceil(remaining / 1000) + "s)";
     return false;
   }
 
   button.disabled = false;
-  countdown.textContent = "";
+  if (countdown) countdown.textContent = "";
   return true;
 }
 
@@ -343,13 +333,16 @@ function setCjpHidden(hidden){
 
 $("hide-cjp-btn").addEventListener("click", () => setCjpHidden(true));
 $("restore-cjp-btn").addEventListener("click", () => setCjpHidden(false));
-$("reload-poll-btn").addEventListener("click", () => {
-  if(!updateReloadButton()) return;
-  const icon = $("reload-icon");
-  icon.classList.add("rotate-180");
-  setTimeout(() => icon.classList.remove("rotate-180"), 500);
-  loadSurvey();
-});
+const reloadBtn = $("reload-poll-btn");
+if (reloadBtn) {
+  reloadBtn.addEventListener("click", () => {
+    if(!updateReloadButton()) return;
+    const icon = $("reload-icon");
+    if (icon) icon.classList.add("rotate-180");
+    setTimeout(() => { if (icon) icon.classList.remove("rotate-180"); }, 500);
+    loadSurvey();
+  });
+}
 
 loadSurvey();
 });
