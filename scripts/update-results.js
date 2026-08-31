@@ -147,9 +147,9 @@ async function main() {
   const userVotes = new Map();
 
   for (let i = 0; i < posts.length; i++) {
-    const post = posts[i];
-    console.log(`Fetching post ${i + 1}/${posts.length}: ${post.url}`);
-    const entries = await fetchRssFeed(post.url);
+    const postUrl = typeof posts[i] === "string" ? posts[i] : posts[i].url;
+    console.log(`Fetching post ${i + 1}/${posts.length}: ${postUrl}`);
+    const entries = await fetchRssFeed(postUrl);
 
     for (const e of entries) {
       if (e.type !== "comment") continue;
