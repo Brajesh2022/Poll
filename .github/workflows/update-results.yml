@@ -3,7 +3,7 @@ name: Update Survey Results
 on:
   schedule:
     # GitHub Actions supports a minimum schedule interval of 5 minutes (*/5 * * * *)
-    - cron: '*/5 * * * *'
+    - cron: '*/6 * * * *'
   workflow_dispatch:
   push:
     branches:
