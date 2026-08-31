@@ -49,16 +49,7 @@
 #loading-title{font-family:'Oswald',sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 #loading-detail{font-size:12px;font-weight:700;color:#6b655b;margin-top:5px;min-height:18px}
 @media(max-width:639px){
-  body{padding-bottom:86px!important}
-  #reload-poll-btn{
-    position:fixed!important;left:14px;right:14px;bottom:54px;
-    width:auto!important;z-index:1000;
-  }
-  main>footer{
-    position:fixed!important;left:0;right:0;bottom:0;z-index:999;
-    padding:9px 14px!important;background:rgba(238,233,223,.97);
-    border-top:1px solid #cfc8b6!important;
-  }
+  body{padding-bottom:0!important}
 }
 
 #reload-poll-btn:disabled{
@@ -95,9 +86,9 @@
 <div class="w-full h-[1.5px] bg-[#cbc3af] mb-7 sm:mb-8"></div>
 </header>
 
-<div class="relative z-10 space-y-6 sm:space-y-8 flex-1">
+<div id="poll-rows-container" class="relative z-10 flex flex-col space-y-6 sm:space-y-8 flex-1">
 
-<div class="flex items-center gap-3 sm:gap-4">
+<div id="row-bjp" class="flex items-center gap-3 sm:gap-4 transition-all duration-300">
 <div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-bjp opacity-85 scale-110"></div>
 <img src="https://upload.wikimedia.org/wikipedia/hi/e/ec/Bharatiya_Janata_Party_logo.svg.png?utm_source=hi.wikipedia.org&utm_campaign=index&utm_content=original" alt="BJP Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
@@ -110,7 +101,7 @@
 <div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#eb5407] leading-none brush-underline"><span id="num-bjp">0</span>%</span></div>
 </div>
 
-<div class="flex items-center gap-3 sm:gap-4">
+<div id="row-inc" class="flex items-center gap-3 sm:gap-4 transition-all duration-300">
 <div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-inc opacity-90 scale-110"></div>
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Indian_National_Congress_hand_logo.svg/250px-Indian_National_Congress_hand_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=parser&utm_content=thumbnail" alt="INC Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
@@ -123,7 +114,7 @@
 <div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#0d4f9b] leading-none brush-underline"><span id="num-inc">0</span>%</span></div>
 </div>
 
-<div id="cjp-full-row-wrapper" class="collapse-transition overflow-hidden">
+<div id="cjp-full-row-wrapper" class="collapse-transition overflow-hidden transition-all duration-300">
 <div class="flex items-center gap-3 sm:gap-4">
 <div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
 <div class="absolute inset-0 splatter-cjp opacity-85 scale-110"></div>
@@ -160,12 +151,12 @@
 </div>
 </div>
 
-<div id="cjp-restore-container" class="hidden">
+<div id="cjp-restore-container" class="hidden transition-all duration-300">
 <button id="restore-cjp-btn" class="w-full py-2 px-3 border border-dashed border-[#a89f8a] rounded-md bg-[#e2dcce]/80 text-[#582d82] text-xs font-bold font-oswald uppercase tracking-wider flex items-center justify-center gap-2"><i class="fa-solid fa-eye"></i> Include CJP</button>
 </div>
 </div>
 
-<div class="relative z-10 my-4 flex items-center justify-center">
+<div id="reload-btn-container" class="hidden relative z-10 my-4 flex items-center justify-center">
 <button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm">
 <i id="reload-icon" class="fa-solid fa-rotate-right"></i><span id="reload-label">Reload Poll</span><span id="reload-countdown" class="ml-1"></span>
 </button>
@@ -269,6 +260,27 @@ function render(){
   animateNumber(bjpNum, nda);
   animateNumber(incNum, india);
   animateNumber(cjpNum, cjp);
+
+  // Dynamic ranking: Top position based on who is winning
+  const parties = [
+    { id: "row-bjp", score: c.NDA, percent: nda, defaultOrder: 1 },
+    { id: "row-inc", score: c.INDIA, percent: india, defaultOrder: 2 },
+    { id: "cjp-full-row-wrapper", score: c.CJP, percent: cjp, defaultOrder: 3 }
+  ];
+
+  parties.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.percent !== a.percent) return b.percent - a.percent;
+    return a.defaultOrder - b.defaultOrder;
+  });
+
+  parties.forEach((item, index) => {
+    const el = $(item.id);
+    if (el) el.style.order = index + 1;
+  });
+
+  const restoreEl = $("cjp-restore-container");
+  if (restoreEl) restoreEl.style.order = 10;
 
   $("resp-count").textContent = total.toLocaleString("en-IN");
 }
