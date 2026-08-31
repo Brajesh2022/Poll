@@ -2,7 +2,7 @@ name: Update Survey Results
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/2 * * * *'
   workflow_dispatch:
   push:
     branches:
