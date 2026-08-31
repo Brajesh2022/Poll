@@ -363,6 +363,21 @@ function render(){
  $("resp-count").textContent=total.toLocaleString("en-IN");
 }
 
+function resolveUserVote(counts){
+ let maxCount=0,winner=null,isTie=false;
+ for(const vote in counts){
+  const count=counts[vote];
+  if(count>maxCount){
+   maxCount=count;
+   winner=vote;
+   isTie=false;
+  }else if(count===maxCount){
+   isTie=true;
+  }
+ }
+ return isTie?null:winner;
+}
+
 async function loadSurvey(){
  showLoading("Loading Survey","Fetching Reddit data…");
  state.rawVotes=[];
@@ -370,17 +385,34 @@ async function loadSurvey(){
  bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
  showStatus(`Loading 0/${POSTS.length}…`);
 
+ const userVotes=new Map();
+
  for(let i=0;i<POSTS.length;i++){
   try{
    const entries=await fetchPost(POSTS[i],i);
    entries.filter(e=>e.type==="comment").forEach(e=>{
     const raw=normalizeVote(e.content);
-    if(raw)state.rawVotes.push(raw);
+    if(!raw) return;
+    const username=(e.author||"").trim().toLowerCase();
+    if(!username||username==="[deleted]"||username==="automoderator") return;
+
+    if(!userVotes.has(username)){
+     userVotes.set(username,{});
+    }
+    const counts=userVotes.get(username);
+    counts[raw]=(counts[raw]||0)+1;
    });
    showStatus(`Loading ${i+1}/${POSTS.length}…`);
    // Results remain covered until every post has finished.
   }catch(e){
    // A failed post is ignored rather than counted as zero votes.
+  }
+ }
+
+ for(const counts of userVotes.values()){
+  const vote=resolveUserVote(counts);
+  if(vote){
+   state.rawVotes.push(vote);
   }
  }
 
@@ -397,12 +429,35 @@ function setCjpHidden(hidden){
 
  if(hidden){
   wrapper.style.maxHeight=wrapper.scrollHeight+"px";
-  requestAnimationFrame(()=>{wrapper.style.maxHeight="0px";wrapper.style.opacity="0";wrapper.style.transform="scaleY(.85)";wrapper.style.pointerEvents="none"});
-  setTimeout(()=>{wrapper.classList.add("hidden");restore.classList.remove("hidden")},350);
+  requestAnimationFrame(()=>{
+   wrapper.style.maxHeight="0px";
+   wrapper.style.opacity="0";
+   wrapper.style.transform="scaleY(.85)";
+   wrapper.style.pointerEvents="none";
+  });
+  setTimeout(()=>{
+   if(state.isCjpHidden){
+    wrapper.classList.add("hidden");
+    restore.classList.remove("hidden");
+   }
+  },350);
  }else{
-  restore.classList.add("hidden");wrapper.classList.remove("hidden");
-  wrapper.style.maxHeight="0px";wrapper.style.opacity="0";wrapper.style.transform="scaleY(.85)";
-  requestAnimationFrame(()=>{wrapper.style.maxHeight="140px";wrapper.style.opacity="1";wrapper.style.transform="scaleY(1)"});
+  restore.classList.add("hidden");
+  wrapper.classList.remove("hidden");
+  wrapper.style.pointerEvents="";
+  wrapper.style.maxHeight="0px";
+  wrapper.style.opacity="0";
+  wrapper.style.transform="scaleY(.85)";
+  requestAnimationFrame(()=>{
+   wrapper.style.maxHeight=wrapper.scrollHeight+"px";
+   wrapper.style.opacity="1";
+   wrapper.style.transform="scaleY(1)";
+  });
+  setTimeout(()=>{
+   if(!state.isCjpHidden){
+    wrapper.style.maxHeight="";
+   }
+  },350);
  }
  render();
 }
