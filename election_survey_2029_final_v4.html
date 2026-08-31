@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Election Survey 2029 - Latest Poll Results</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+.font-bebas{font-family:'Bebas Neue','Oswald',sans-serif}.font-oswald{font-family:'Oswald',sans-serif}.font-inter{font-family:'Inter',sans-serif}
+.paper-texture{background-color:#eee9df;background-image:radial-gradient(#cfc8b8 .75px,transparent .75px),radial-gradient(#dcd5c7 .75px,#eee9df .75px);background-size:28px 28px;background-position:0 0,14px 14px}
+.distressed-text{letter-spacing:.02em;color:#1a1715;text-shadow:1px 1px 0 rgba(0,0,0,.12)}
+.brush-ribbon{background:#183e74;position:relative;clip-path:polygon(0 8%,4% 0,12% 6%,25% 1%,50% 7%,75% 2%,92% 8%,100% 0,99% 92%,93% 100%,82% 94%,55% 98%,30% 93%,12% 100%,0 90%);filter:drop-shadow(1px 2px 2px rgba(0,0,0,.22))}
+.splatter-bjp{background:radial-gradient(circle,#f36621f2 0,#f98e3ccc 55%,#eb6e1e00 72%);border-radius:46% 54% 52% 48%/48% 52% 48% 52%}
+.splatter-inc{background:radial-gradient(circle at 50% 25%,#f36621d9 0,#f3662199 28%,#ffffffe6 35%,#ffffffe0 60%,#138808d9 68%,#13880800 78%);border-radius:52% 48% 55% 45%/45% 55% 45% 55%}
+.splatter-cjp{background:radial-gradient(circle,#8e6ea8e6 0,#af92c9bf 55%,#8e6ea800 75%);border-radius:50% 50% 45% 55%/53% 47% 53% 47%}
+.poll-bar{position:relative;overflow:hidden;transition:width .9s cubic-bezier(.25,1,.5,1)}
+.poll-bar:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#ffffff26,#0000001a);opacity:.6;mix-blend-mode:overlay}
+.brush-underline{position:relative;display:inline-block}.brush-underline:after{content:"";position:absolute;bottom:-6px;left:3px;right:3px;height:4px;background:currentColor;border-radius:40% 60% 70% 30%/40% 50% 60% 50%;opacity:.85;transform:rotate(-1deg)}
+.grunge-overlay{background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E")}
+.collapse-transition{transition:all .35s cubic-bezier(.4,0,.2,1)}
+
+.parliament-blend{
+  mask-image:radial-gradient(circle at 75% 30%,black 35%,transparent 75%);
+  -webkit-mask-image:radial-gradient(circle at 75% 30%,black 35%,transparent 75%);
+  filter:grayscale(100%) contrast(140%) brightness(95%) sepia(20%);
+  mix-blend-mode:multiply;
+}
+
+/* Full-screen data loading cover */
+#data-loading-cover{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(238,233,223,.98);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .25s ease,visibility .25s ease;
+}
+#data-loading-cover.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loading-box{text-align:center;color:#1a1715;padding:28px}
+.loading-spinner{
+  width:48px;height:48px;margin:0 auto 18px;
+  border:4px solid rgba(24,62,116,.18);
+  border-top-color:#183e74;border-radius:50%;
+  animation:surveySpin .8s linear infinite;
+}
+@keyframes surveySpin{to{transform:rotate(360deg)}}
+#loading-title{font-family:'Oswald',sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#loading-detail{font-size:12px;font-weight:700;color:#6b655b;margin-top:5px;min-height:18px}
+@media(max-width:639px){
+  body{padding-bottom:86px!important}
+  #reload-poll-btn{
+    position:fixed!important;left:14px;right:14px;bottom:54px;
+    width:auto!important;z-index:1000;
+  }
+  main>footer{
+    position:fixed!important;left:0;right:0;bottom:0;z-index:999;
+    padding:9px 14px!important;background:rgba(238,233,223,.97);
+    border-top:1px solid #cfc8b6!important;
+    
+  }
+}
+
+#reload-poll-btn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+  transform:none!important;
+}
+#reload-countdown{
+  font-variant-numeric:tabular-nums;
+}
+</style>
+</head>
+<body class="bg-[#eee9df] sm:bg-[#181818] min-h-screen flex flex-col items-center justify-center p-0 sm:p-6 font-inter select-none">
+<div id="data-loading-cover" aria-live="polite" aria-busy="true">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div id="loading-title">Loading Survey</div>
+    <div id="loading-detail">Fetching Reddit data…</div>
+  </div>
+</div>
+
+
+<main id="survey-card" class="paper-texture grunge-overlay relative w-full min-h-screen sm:min-h-0 sm:max-w-[560px] sm:shadow-2xl sm:rounded-sm sm:border sm:border-[#cfc8b6] overflow-hidden px-5 py-7 sm:p-9 flex flex-col justify-between">
+
+<div class="absolute -top-1 -right-2 w-64 sm:w-72 h-52 sm:h-56 pointer-events-none parliament-blend z-0 opacity-75 sm:opacity-80">
+  <img src="https://img.magnific.com/premium-vector/new-indian-parliament-building-with-old-parliament-vector-illustration_667085-501.jpg" alt="Indian Parliament" onerror="this.style.display='none'" class="w-full h-full object-cover object-left-top">
+</div>
+</div>
+
+<header class="relative z-10">
+<h1 class="font-bebas text-[64px] sm:text-7xl md:text-[84px] leading-[.88] font-extrabold uppercase text-[#1a1715] tracking-tight distressed-text mb-2.5">ELECTION<br>SURVEY 2029</h1>
+<div class="inline-block mt-1"><div class="brush-ribbon px-4 py-1.5 shadow-sm"><span class="font-oswald text-sm sm:text-[15px] font-bold tracking-wider text-white uppercase">LATEST POLL RESULTS</span></div></div>
+<div class="mt-4 flex items-center gap-2 text-[#4a463e] font-inter font-extrabold text-[11px] sm:text-xs tracking-widest uppercase pb-3">
+<span>ALL INDIA SURVEY</span><span class="text-stone-400">•</span><span>TOTAL RESPONSES: <span id="resp-count">0</span></span>
+</div>
+<div class="w-full h-[1.5px] bg-[#cbc3af] mb-7 sm:mb-8"></div>
+</header>
+
+<div class="relative z-10 space-y-6 sm:space-y-8 flex-1">
+
+<div class="flex items-center gap-3 sm:gap-4">
+<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div class="absolute inset-0 splatter-bjp opacity-85 scale-110"></div>
+<img src="https://upload.wikimedia.org/wikipedia/hi/e/ec/Bharatiya_Janata_Party_logo.svg.png?utm_source=hi.wikipedia.org&utm_campaign=index&utm_content=original" alt="BJP Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
+</div>
+<div class="flex-1 min-w-0 pr-1 sm:pr-2">
+<div class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none mb-2.5 uppercase">BJP / NDA</div>
+<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-bjp" class="poll-bar h-full bg-[#eb5407] rounded-md" style="width:0%"></div></div>
+</div>
+<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#eb5407] leading-none brush-underline"><span id="num-bjp">0</span>%</span></div>
+</div>
+
+<div class="flex items-center gap-3 sm:gap-4">
+<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div class="absolute inset-0 splatter-inc opacity-90 scale-110"></div>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Indian_National_Congress_hand_logo.svg/250px-Indian_National_Congress_hand_logo.svg.png?utm_source=commons.wikimedia.org&utm_campaign=parser&utm_content=thumbnail" alt="INC Logo" onerror="this.style.display='none'" class="relative z-10 w-11 h-11 sm:w-14 sm:h-14 object-contain drop-shadow-sm">
+</div>
+<div class="flex-1 min-w-0 pr-1 sm:pr-2">
+<div class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none mb-2.5 uppercase">INC / INDIA</div>
+<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-inc" class="poll-bar h-full bg-[#0d4f9b] rounded-md" style="width:0%"></div></div>
+</div>
+<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#0d4f9b] leading-none brush-underline"><span id="num-inc">0</span>%</span></div>
+</div>
+
+<div id="cjp-full-row-wrapper" class="collapse-transition overflow-hidden">
+<div class="flex items-center gap-3 sm:gap-4">
+<div class="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+<div class="absolute inset-0 splatter-cjp opacity-85 scale-110"></div>
+<div class="relative z-10 w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"><svg class="w-full h-full drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M45 22C37 11 21 7 13 5" stroke="#3b1f0d" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M55 22C63 11 79 7 87 5" stroke="#3b1f0d" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M39 31L20 20L10 24" stroke="#4a2710" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M61 31L80 20L90 24" stroke="#4a2710" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M37 45L14 47L7 59" stroke="#4a2710" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M63 45L86 47L93 59" stroke="#4a2710" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M39 63L18 77L11 93" stroke="#3d200d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M61 63L82 77L89 93" stroke="#3d200d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M44 87L38 97" stroke="#351a09" stroke-width="2" stroke-linecap="round"/>
+<path d="M56 87L62 97" stroke="#351a09" stroke-width="2" stroke-linecap="round"/>
+<ellipse cx="50" cy="22" rx="6.5" ry="5.5" fill="#321707"/>
+<path d="M35 26C35 22 42 20 50 20C58 20 65 22 65 26C67 33 65 39 50 39C35 39 33 33 35 26Z" fill="#5c2f10" stroke="#2b1406" stroke-width="1.2"/>
+<ellipse cx="50" cy="28.5" rx="7.5" ry="4" fill="#7a3f16"/>
+<path d="M37 38C34 50 35 72 49.5 86C49.5 60 48 44 49.5 38C44 37 39 37.5 37 38Z" fill="#4d270d" stroke="#241005" stroke-width="1.1"/>
+<path d="M63 38C66 50 65 72 50.5 86C50.5 60 52 44 50.5 38C56 37 61 37.5 63 38Z" fill="#5c3012" stroke="#241005" stroke-width="1.1"/>
+<line x1="50" y1="38" x2="50" y2="86" stroke="#261206" stroke-width="1.2"/>
+<path d="M42 45C44 58 44 70 49 80" stroke="#753d17" stroke-width="1" fill="none" opacity="0.6"/>
+<path d="M58 45C56 58 56 70 51 80" stroke="#87471c" stroke-width="1" fill="none" opacity="0.6"/>
+</svg></div>
+</div>
+<div class="flex-1 min-w-0 pr-1 sm:pr-2">
+<div class="flex items-center gap-2 mb-2.5">
+<span class="font-oswald text-2xl sm:text-3xl font-extrabold text-[#1a1715] tracking-tight leading-none uppercase">CJP</span>
+<button id="hide-cjp-btn" type="button" class="cursor-pointer text-[#756f64] hover:text-[#1a1715] p-1 rounded" title="Hide CJP"><i class="fa-solid fa-eye-slash"></i></button>
+</div>
+<div class="w-full bg-[#d7d0c0] h-6 sm:h-7 rounded-md p-0.5 overflow-hidden shadow-inner"><div id="bar-cjp" class="poll-bar h-full bg-[#582d82] rounded-md" style="width:0%"></div></div>
+</div>
+<div class="w-[1.5px] h-12 bg-[#cfc8b6]"></div>
+<div class="w-16 sm:w-20 shrink-0 text-right"><span class="font-bebas text-4xl sm:text-5xl font-extrabold text-[#582d82] leading-none brush-underline"><span id="num-cjp">0</span>%</span></div>
+</div>
+</div>
+
+<div id="cjp-restore-container" class="hidden">
+<button id="restore-cjp-btn" class="w-full py-2 px-3 border border-dashed border-[#a89f8a] rounded-md bg-[#e2dcce]/80 text-[#582d82] text-xs font-bold font-oswald uppercase tracking-wider flex items-center justify-center gap-2"><i class="fa-solid fa-eye"></i> Include CJP</button>
+</div>
+</div>
+
+<div class="relative z-10 my-4 flex items-center justify-center">
+<button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm">
+<i id="reload-icon" class="fa-solid fa-rotate-right"></i><span id="reload-label">Reload Poll</span><span id="reload-countdown" class="ml-1"></span>
+</button>
+</div>
+
+<footer class="relative z-10 pt-3 flex justify-between items-center text-[10px] sm:text-xs text-[#524e46] font-extrabold tracking-wider uppercase border-t border-[#d8d1bf]">
+<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 15 MIN</span>
+</footer>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const POSTS = [
+    {id:"choose-1",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3auzc/choose/"},
+    {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
+  ];
+
+  const PROXY_HOST = "https://proxy.vlyx.workers.dev";
+  const ATOM_NS = "http://www.w3.org/2005/Atom";
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [1,2,4];
+
+  const ANSWERS = {
+    "1":"INDIA","INDIA":"INDIA","INC":"INDIA","CONGRESS":"INDIA",
+    "2":"NDA","NDA":"NDA","BJP":"NDA",
+    "3":"CJP_INDIA","4":"CJP_NDA","CJP":"CJP"
+  };
+
+  const state = {
+    isCjpHidden:false,
+    rawVotes:[],
+    allRawVotes:[]
+  };
+
+  const $ = id => document.getElementById(id);
+  const bjpBar=$("bar-bjp"), incBar=$("bar-inc"), cjpBar=$("bar-cjp");
+  const bjpNum=$("num-bjp"), incNum=$("num-inc"), cjpNum=$("num-cjp");
+
+  const loadingCover=$("data-loading-cover");
+  const loadingTitle=$("loading-title");
+  const loadingDetail=$("loading-detail");
+
+  function showLoading(title,detail){
+    loadingTitle.textContent=title;
+    loadingDetail.textContent=detail;
+    loadingCover.classList.remove("hidden");
+  }
+
+  function hideLoading(){
+    loadingCover.classList.add("hidden");
+  }
+
+  function makeRssUrl(value){
+    const url=new URL(value.trim());
+    if(!/(^|\.)reddit\.com$/i.test(url.hostname)) throw Error("Not a Reddit URL");
+    url.search="";
+    url.hash="";
+    url.pathname=url.pathname
+      .replace(/\.(rss|json)$/i,"")
+      .replace(/\/+$/,"")+".rss";
+    return url.href;
+  }
+
+  function children(parent,name){
+    return Array.from(parent.children).filter(el =>
+      el.localName===name &&
+      (el.namespaceURI===ATOM_NS || !el.namespaceURI)
+    );
+  }
+
+  function child(parent,name){
+    return children(parent,name)[0] || null;
+  }
+
+  function textChild(parent,name){
+    const el=child(parent,name);
+    return el ? el.textContent.trim() : "";
+  }
+
+  function parseFeed(xmlText){
+    const xml=new DOMParser().parseFromString(xmlText,"application/xml");
+
+    if(xml.getElementsByTagName("parsererror").length)
+      throw Error("Invalid RSS");
+
+    if(!xml.documentElement || xml.documentElement.localName!=="feed")
+      throw Error("Not an Atom feed");
+
+    return children(xml.documentElement,"entry").map(entry=>{
+      const id=textChild(entry,"id");
+      const authorEl=child(entry,"author");
+      const contentEl=child(entry,"content");
+      const linkEl=children(entry,"link").find(el=>el.getAttribute("href"));
+
+      return {
+        id,
+        type:id.startsWith("t3_")?"post":
+             id.startsWith("t1_")?"comment":"other",
+        content:contentEl ? contentEl.textContent : "",
+        author:authorEl ? textChild(authorEl,"name").replace(/^\/u\//,"") : "",
+        link:linkEl ? linkEl.getAttribute("href") : ""
+      };
+    });
+  }
+
+  function normalizeVote(text){
+    const value=String(text||"")
+      .replace(/<[^>]*>/g," ")
+      .replace(/&nbsp;/gi," ")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g," ");
+
+    const clean=value.replace(
+      /^[\s"'`*_.,:;!?()[\]{}<>-]+|[\s"'`*_.,:;!?()[\]{}<>-]+$/g,
+      ""
+    );
+
+    return ANSWERS[clean] || null;
+  }
+
+  function sleep(ms){
+    return new Promise(resolve=>setTimeout(resolve,ms));
+  }
+
+  async function fetchPost(post,index){
+    const rssUrl=makeRssUrl(post.url);
+    const proxyUrl=PROXY_HOST+"/?url="+encodeURIComponent(rssUrl);
+
+    for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
+      try{
+        showLoading(
+          "LOADING SURVEY",
+          `Fetching ${index+1}/${POSTS.length}…`
+        );
+
+        const response=await fetch(proxyUrl,{
+          method:"GET",
+          cache:"no-store"
+        });
+
+        const text=await response.text();
+
+        if(!response.ok){
+          const retryable=[429,500,502,503,504].includes(response.status);
+
+          if(!retryable || attempt===MAX_RETRIES)
+            throw Error("HTTP "+response.status);
+        }else{
+          return parseFeed(text);
+        }
+      }catch(error){
+        if(attempt===MAX_RETRIES) throw error;
+      }
+
+      const seconds=RETRY_DELAYS[attempt] || 4;
+
+      for(let remaining=seconds;remaining>0;remaining--){
+        showLoading("RETRYING",`Retrying in ${remaining}s…`);
+        await sleep(1000);
+      }
+    }
+
+    throw Error("Fetch failed");
+  }
+
+  /*
+    Only exact allowed answers become votes.
+    Random comments are discarded.
+  */
+  function processEntries(entries){
+    const votes=[];
+
+    entries
+      .filter(entry=>entry.type==="comment")
+      .forEach(entry=>{
+        const raw=normalizeVote(entry.content);
+        if(!raw) return;
+
+        /*
+          A username is required because the final aggregation enforces
+          one-user-one-vote.
+        */
+        const username=(entry.author||"").trim().toLowerCase();
+        if(!username) return;
+
+        votes.push({
+          username,
+          raw
+        });
+      });
+
+    return votes;
+  }
+
+  /*
+    ONE USER = ONE VOTE.
+
+    If a user appears in several tracked posts:
+      - count each exact answer they used
+      - choose the answer with the highest frequency
+      - if two or more answers tie for highest frequency, ignore that user
+
+    Example:
+      user: 1, 1, NDA -> INDIA
+      user: BJP, NDA, NDA -> NDA
+      user: 1, NDA -> ignored (tie)
+  */
+  function resolveOneVotePerUser(votes){
+    const byUser=new Map();
+
+    votes.forEach(vote=>{
+      if(!byUser.has(vote.username))
+        byUser.set(vote.username,[]);
+
+      byUser.get(vote.username).push(vote.raw);
+    });
+
+    const resolved=[];
+    let ambiguous=0;
+
+    byUser.forEach((choices,username)=>{
+      const frequency=new Map();
+
+      choices.forEach(choice=>{
+        frequency.set(choice,(frequency.get(choice)||0)+1);
+      });
+
+      let highest=0;
+      let winners=[];
+
+      frequency.forEach((count,choice)=>{
+        if(count>highest){
+          highest=count;
+          winners=[choice];
+        }else if(count===highest){
+          winners.push(choice);
+        }
+      });
+
+      if(winners.length!==1){
+        ambiguous++;
+        return;
+      }
+
+      resolved.push({
+        username,
+        raw:winners[0]
+      });
+    });
+
+    return {resolved,ambiguous};
+  }
+
+  function effectiveParty(raw){
+    if(raw==="CJP_INDIA")
+      return state.isCjpHidden ? "INDIA" : "CJP";
+
+    if(raw==="CJP_NDA")
+      return state.isCjpHidden ? "NDA" : "CJP";
+
+    return raw;
+  }
+
+  function animateNumber(el,to){
+    const from=parseInt(el.textContent,10)||0;
+    const start=performance.now();
+    const duration=750;
+
+    function tick(now){
+      const progress=Math.min((now-start)/duration,1);
+      const ease=1-Math.pow(1-progress,3);
+      el.textContent=Math.round(from+(to-from)*ease);
+
+      if(progress<1)
+        requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function render(){
+    const counts={INDIA:0,NDA:0,CJP:0};
+
+    state.rawVotes.forEach(raw=>{
+      counts[effectiveParty(raw)]++;
+    });
+
+    const total=counts.INDIA+counts.NDA+counts.CJP;
+
+    const india=total ? Math.round(counts.INDIA/total*100) : 0;
+    const nda=total ? Math.round(counts.NDA/total*100) : 0;
+    const cjp=total ? Math.round(counts.CJP/total*100) : 0;
+
+    bjpBar.style.width=india+"%";
+    incBar.style.width=nda+"%";
+    cjpBar.style.width=cjp+"%";
+
+    animateNumber(bjpNum,india);
+    animateNumber(incNum,nda);
+    animateNumber(cjpNum,cjp);
+
+    $("resp-count").textContent=total.toLocaleString("en-IN");
+  }
+
+  async function loadSurvey(){
+    showLoading("LOADING SURVEY","Fetching Reddit data…");
+
+    state.rawVotes=[];
+    state.allRawVotes=[];
+
+    bjpBar.style.width="0%";
+    incBar.style.width="0%";
+    cjpBar.style.width="0%";
+    bjpNum.textContent="0";
+    incNum.textContent="0";
+    cjpNum.textContent="0";
+
+    let failed=0;
+
+    /*
+      Sequential requests reduce the chance of overwhelming the proxy.
+    */
+    for(let i=0;i<POSTS.length;i++){
+      try{
+        const entries=await fetchPost(POSTS[i],i);
+        state.allRawVotes.push(...processEntries(entries));
+
+        showLoading(
+          "LOADING SURVEY",
+          `${i+1}/${POSTS.length} posts processed…`
+        );
+      }catch(error){
+        failed++;
+      }
+    }
+
+    /*
+      Do the one-user-one-vote decision only after ALL posts have been
+      collected, so votes from different posts can be compared.
+    */
+    const result=resolveOneVotePerUser(state.allRawVotes);
+    state.rawVotes=result.resolved.map(vote=>vote.raw);
+
+    render();
+
+    /*
+      Keep the results hidden until the entire collection + aggregation
+      process is complete.
+    */
+    if(failed){
+      showLoading(
+        "SURVEY READY",
+        `${state.rawVotes.length.toLocaleString("en-IN")} votes • ${failed} post unavailable`
+      );
+    }else{
+      showLoading(
+        "SURVEY READY",
+        `${state.rawVotes.length.toLocaleString("en-IN")} votes`
+      );
+    }
+
+    setTimeout(hideLoading,900);
+  }
+
+  function setCjpHidden(hidden){
+    state.isCjpHidden=hidden;
+
+    const wrapper=$("cjp-full-row-wrapper");
+    const restore=$("cjp-restore-container");
+
+    if(hidden){
+      wrapper.style.maxHeight=wrapper.scrollHeight+"px";
+      wrapper.style.opacity="1";
+
+      requestAnimationFrame(()=>{
+        wrapper.style.maxHeight="0px";
+        wrapper.style.opacity="0";
+        wrapper.style.transform="scaleY(.85)";
+        wrapper.style.pointerEvents="none";
+      });
+
+      setTimeout(()=>{
+        wrapper.classList.add("hidden");
+        restore.classList.remove("hidden");
+      },350);
+    }else{
+      restore.classList.add("hidden");
+      wrapper.classList.remove("hidden");
+      wrapper.style.maxHeight="0px";
+      wrapper.style.opacity="0";
+      wrapper.style.transform="scaleY(.85)";
+
+      requestAnimationFrame(()=>{
+        wrapper.style.maxHeight="140px";
+        wrapper.style.opacity="1";
+        wrapper.style.transform="scaleY(1)";
+      });
+    }
+
+    render();
+  }
+
+  $("hide-cjp-btn").addEventListener("click",()=>setCjpHidden(true));
+  $("restore-cjp-btn").addEventListener("click",()=>setCjpHidden(false));
+
+  $("reload-poll-btn").addEventListener("click",()=>{
+    const icon=$("reload-icon");
+    icon.classList.add("rotate-180");
+    setTimeout(()=>icon.classList.remove("rotate-180"),500);
+    loadSurvey();
+  });
+
+  loadSurvey();
+});
+</script>
+</body>
+</html>
