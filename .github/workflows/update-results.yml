@@ -2,8 +2,8 @@ name: Update Survey Results
 
 on:
   schedule:
-    # GitHub Actions supports a minimum schedule interval of 5 minutes (*/5 * * * *)
-    - cron: '*/6 * * * *'
+    # GitHub Actions cron: 5 minutes with internal 2-minute loop
+    - cron: '*/5 * * * *'
   workflow_dispatch:
   push:
     branches:
@@ -21,24 +21,35 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Fetch RSS and calculate results
-        run: node scripts/update-results.js
-
-      - name: Commit and push changes
+      - name: Run 2-minute update loop
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add results.json
-          if git diff --staged --quiet; then
-            echo "No changes to results.json"
-          else
-            git commit -m "chore: update survey results fallback [skip ci]"
-            git pull --rebase origin main || true
-            git push
-          fi
+          
+          # Run 2 iterations (every 2 minutes) per 5-minute scheduled run
+          for i in 1 2; do
+            echo "=== Starting update iteration $i ==="
+            node scripts/update-results.js
+            
+            git add results.json
+            if git diff --staged --quiet; then
+              echo "No changes to results.json in iteration $i"
+            else
+              git commit -m "chore: update survey results [skip ci]"
+              git pull --rebase origin main || true
+              git push
+            fi
+            
+            if [ "$i" -lt 2 ]; then
+              echo "Waiting 120 seconds before next check..."
+              sleep 120
+            fi
+          done

@@ -47,18 +47,13 @@
 }
 @keyframes surveySpin{to{transform:rotate(360deg)}}
 #loading-title{font-family:'Oswald',sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-#loading-detail{font-size:12px;font-weight:700;color:#6b655b;margin-top:5px;min-height:18px}
 @media(max-width:639px){
-  body{padding-bottom:0!important}
-}
-
-#reload-poll-btn:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-  transform:none!important;
-}
-#reload-countdown{
-  font-variant-numeric:tabular-nums;
+  body{padding-bottom:50px!important}
+  main>footer{
+    position:fixed!important;left:0;right:0;bottom:0;z-index:999;
+    padding:9px 14px!important;background:rgba(238,233,223,.97);
+    border-top:1px solid #cfc8b6!important;
+  }
 }
 </style>
 </head>
@@ -160,21 +155,15 @@
 </div>
 </div>
 
-<div id="reload-btn-container" class="hidden relative z-10 my-3 flex items-center justify-center">
-<button id="reload-poll-btn" class="w-full sm:w-auto px-5 py-2 bg-[#dfd8c8] text-[#2c2824] border border-[#beb6a3] rounded-lg font-oswald uppercase tracking-wider text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-[#d5cdbc] transition-colors">
-<i id="reload-icon" class="fa-solid fa-rotate-right"></i><span id="reload-label">Reload Poll</span><span id="reload-countdown" class="ml-1"></span>
-</button>
-</div>
-
 <footer class="relative z-10 pt-3 flex justify-between items-center text-[10px] sm:text-xs text-[#524e46] font-extrabold tracking-wider uppercase border-t border-[#d8d1bf]">
-<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 5 MIN</span>
+<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 2 MIN</span>
 </footer>
 </main>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-const state = { isCjpHidden: false, rawVotes: [] };
+const state = { isCjpHidden: false, votes: { "1": 0, "2": 0, "3": 0, "4": 0 } };
 
 const RELOAD_COOLDOWN_MS = 60 * 1000;
 const CACHE_TIME_KEY = "electionSurvey2029:lastSuccessfulFetch";
@@ -191,17 +180,18 @@ function setLastFetchTime(){
 
 function updateReloadButton(){
   const button = $("reload-poll-btn");
+  if (!button) return true;
   const countdown = $("reload-countdown");
   const remaining = Math.max(0, RELOAD_COOLDOWN_MS - (Date.now() - getLastFetchTime()));
 
   if(remaining > 0){
     button.disabled = true;
-    countdown.textContent = "(" + Math.ceil(remaining / 1000) + "s)";
+    if (countdown) countdown.textContent = "(" + Math.ceil(remaining / 1000) + "s)";
     return false;
   }
 
   button.disabled = false;
-  countdown.textContent = "";
+  if (countdown) countdown.textContent = "";
   return true;
 }
 
@@ -232,12 +222,6 @@ function hideLoading(){
 const bjpBar = $("bar-bjp"), incBar = $("bar-inc"), cjpBar = $("bar-cjp");
 const bjpNum = $("num-bjp"), incNum = $("num-inc"), cjpNum = $("num-cjp");
 
-function effectiveParty(raw){
-  if(raw === "CJP_INDIA") return state.isCjpHidden ? "INDIA" : "CJP";
-  if(raw === "CJP_NDA") return state.isCjpHidden ? "NDA" : "CJP";
-  return raw;
-}
-
 function animateNumber(el, to){
   const from = parseInt(el.textContent, 10) || 0, start = performance.now(), duration = 750;
   function tick(now){
@@ -249,27 +233,42 @@ function animateNumber(el, to){
 }
 
 function render(){
-  const c = { INDIA: 0, NDA: 0, CJP: 0 };
-  state.rawVotes.forEach(v => c[effectiveParty(v)]++);
-  const total = c.INDIA + c.NDA + c.CJP;
+  const v1 = Number(state.votes["1"]) || 0; // INDIA / INC
+  const v2 = Number(state.votes["2"]) || 0; // BJP / NDA
+  const v3 = Number(state.votes["3"]) || 0; // CJP (else INDIA)
+  const v4 = Number(state.votes["4"]) || 0; // CJP (else NDA/BJP)
 
-  const india = total ? Math.round(c.INDIA / total * 100) : 0;
-  const nda = total ? Math.round(c.NDA / total * 100) : 0;
-  const cjp = total ? Math.round(c.CJP / total * 100) : 0;
+  let bjpCount, incCount, cjpCount;
 
-  bjpBar.style.width = nda + "%";
-  incBar.style.width = india + "%";
-  cjpBar.style.width = cjp + "%";
+  if (state.isCjpHidden) {
+    bjpCount = v2 + v4;
+    incCount = v1 + v3;
+    cjpCount = 0;
+  } else {
+    bjpCount = v2;
+    incCount = v1;
+    cjpCount = v3 + v4;
+  }
 
-  animateNumber(bjpNum, nda);
-  animateNumber(incNum, india);
-  animateNumber(cjpNum, cjp);
+  const total = bjpCount + incCount + cjpCount;
+
+  const bjpPercent = total ? Math.round((bjpCount / total) * 100) : 0;
+  const incPercent = total ? Math.round((incCount / total) * 100) : 0;
+  const cjpPercent = total ? Math.round((cjpCount / total) * 100) : 0;
+
+  bjpBar.style.width = bjpPercent + "%";
+  incBar.style.width = incPercent + "%";
+  cjpBar.style.width = cjpPercent + "%";
+
+  animateNumber(bjpNum, bjpPercent);
+  animateNumber(incNum, incPercent);
+  animateNumber(cjpNum, cjpPercent);
 
   // Dynamic ranking: Top position based on who is winning
   const parties = [
-    { id: "row-bjp", score: c.NDA, percent: nda, defaultOrder: 1 },
-    { id: "row-inc", score: c.INDIA, percent: india, defaultOrder: 2 },
-    { id: "cjp-full-row-wrapper", score: c.CJP, percent: cjp, defaultOrder: 3 }
+    { id: "row-bjp", score: bjpCount, percent: bjpPercent, defaultOrder: 1 },
+    { id: "row-inc", score: incCount, percent: incPercent, defaultOrder: 2 },
+    { id: "cjp-full-row-wrapper", score: cjpCount, percent: cjpPercent, defaultOrder: 3 }
   ];
 
   parties.sort((a, b) => {
@@ -295,7 +294,12 @@ async function loadSurvey(){
     const res = await fetch("results.json", { cache: "no-cache" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    state.rawVotes = Array.isArray(data.rawVotes) ? data.rawVotes : [];
+    state.votes = {
+      "1": Number(data["1"] !== undefined ? data["1"] : data.counts?.INDIA) || 0,
+      "2": Number(data["2"] !== undefined ? data["2"] : data.counts?.NDA) || 0,
+      "3": Number(data["3"]) || 0,
+      "4": Number(data["4"] !== undefined ? data["4"] : data.counts?.CJP) || 0
+    };
   } catch (err) {
     console.error("Failed to load results.json:", err);
   }
@@ -347,13 +351,16 @@ function setCjpHidden(hidden){
 
 $("hide-cjp-btn").addEventListener("click", () => setCjpHidden(true));
 $("restore-cjp-btn").addEventListener("click", () => setCjpHidden(false));
-$("reload-poll-btn").addEventListener("click", () => {
-  if(!updateReloadButton()) return;
-  const icon = $("reload-icon");
-  icon.classList.add("rotate-180");
-  setTimeout(() => icon.classList.remove("rotate-180"), 500);
-  loadSurvey();
-});
+const reloadBtn = $("reload-poll-btn");
+if (reloadBtn) {
+  reloadBtn.addEventListener("click", () => {
+    if(!updateReloadButton()) return;
+    const icon = $("reload-icon");
+    if (icon) icon.classList.add("rotate-180");
+    setTimeout(() => { if (icon) icon.classList.remove("rotate-180"); }, 500);
+    loadSurvey();
+  });
+}
 
 loadSurvey();
 });
