@@ -175,7 +175,7 @@
 </div>
 
 <footer class="relative z-10 pt-3 flex justify-between items-center text-[10px] sm:text-xs text-[#524e46] font-extrabold tracking-wider uppercase border-t border-[#d8d1bf]">
-<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 15 MIN</span>
+<span>BASED ON REDDIT SURVEY</span><span>UPDATES EVERY 2 MIN</span>
 </footer>
 </main>
 
@@ -310,9 +310,9 @@ function effectiveParty(raw){
 }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 
-async function fetchPost(post,index){
+async function fetchPost(post,index,forceFresh=false){
  const rssUrl=makeRssUrl(post.url);
- const apiUrl=`${RSS_ENDPOINT}?url=${encodeURIComponent(rssUrl)}`;
+ const apiUrl=`${RSS_ENDPOINT}?url=${encodeURIComponent(rssUrl)}${forceFresh?"&fresh=1":""}`;
 
  for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
   try{
@@ -324,7 +324,8 @@ async function fetchPost(post,index){
     if(![429,500,502,503,504].includes(response.status)||attempt===MAX_RETRIES)
       throw Error("HTTP "+response.status);
    }else{
-    return parseFeed(text);
+    const isCached=response.headers.get("X-Cache")==="HIT";
+    return {entries:parseFeed(text),isCached};
    }
   }catch(error){
    if(attempt===MAX_RETRIES)throw error;
@@ -378,18 +379,21 @@ function resolveUserVote(counts){
  return isTie?null:winner;
 }
 
-async function loadSurvey(){
- showLoading("Loading Survey","Fetching Reddit data…");
+async function loadSurvey(forceFresh=false){
+ showLoading(forceFresh?"Refreshing Survey":"Loading Survey",forceFresh?"Fetching fresh Reddit data…":"Fetching Reddit data…");
  state.rawVotes=[];
  bjpBar.style.width=incBar.style.width=cjpBar.style.width="0%";
  bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
  showStatus(`Loading 0/${POSTS.length}…`);
 
  const userVotes=new Map();
+ let hadCachedResults=false;
 
  for(let i=0;i<POSTS.length;i++){
   try{
-   const entries=await fetchPost(POSTS[i],i);
+   const result=await fetchPost(POSTS[i],i,forceFresh);
+   if(result&&result.isCached) hadCachedResults=true;
+   const entries=result?result.entries:[];
    entries.filter(e=>e.type==="comment").forEach(e=>{
     const raw=normalizeVote(e.content);
     if(!raw) return;
@@ -414,6 +418,11 @@ async function loadSurvey(){
   if(vote){
    state.rawVotes.push(vote);
   }
+ }
+
+ // If cached results yielded fewer than 50 responders, immediately fetch fresh live results
+ if(!forceFresh && hadCachedResults && state.rawVotes.length < 50){
+  return await loadSurvey(true);
  }
 
  render();
@@ -469,7 +478,7 @@ $("reload-poll-btn").addEventListener("click",()=>{
  const icon=$("reload-icon");
  icon.classList.add("rotate-180");
  setTimeout(()=>icon.classList.remove("rotate-180"),500);
- loadSurvey();
+ loadSurvey(true);
 });
 
 loadSurvey();

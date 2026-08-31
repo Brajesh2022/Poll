@@ -5,7 +5,7 @@
  * domain fallbacks, 15-minute caching for successful responses, and zero-caching for errors.
  */
 
-const CACHE_TTL_SECONDS = 900; // 15 minutes
+const CACHE_TTL_SECONDS = 120; // 2 minutes
 const MAX_UPSTREAM_RETRIES = 3;
 const RETRY_DELAYS = [500, 1200, 2500]; // ms
 const REQUEST_TIMEOUT_MS = 8000; // 8s per attempt
@@ -141,6 +141,9 @@ export async function onRequest(context) {
 
   const requestUrl = new URL(request.url);
   const targetParam = requestUrl.searchParams.get("url");
+  const bypassCache = requestUrl.searchParams.get("nocache") === "1" ||
+                      requestUrl.searchParams.get("fresh") === "1" ||
+                      request.headers.get("cache-control") === "no-cache";
 
   let canonicalUrl;
   try {
@@ -156,7 +159,7 @@ export async function onRequest(context) {
     });
   }
 
-  // 15-minute Edge Caching with Cloudflare Cache API
+  // 2-minute Edge Caching with Cloudflare Cache API
   let cache;
   try {
     cache = caches.default;
@@ -171,7 +174,7 @@ export async function onRequest(context) {
     method: "GET",
   });
 
-  if (cache) {
+  if (cache && !bypassCache) {
     try {
       const cachedResponse = await cache.match(cacheKey);
       if (cachedResponse) {
@@ -197,7 +200,7 @@ export async function onRequest(context) {
       ...getCORSHeaders(),
       "Content-Type": "application/atom+xml; charset=utf-8",
       "Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}`,
-      "X-Cache": "MISS",
+      "X-Cache": bypassCache ? "BYPASS" : "MISS",
       "X-Upstream-Source": source,
       "X-Fetched-At": new Date().toISOString(),
     });
