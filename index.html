@@ -187,7 +187,7 @@ const POSTS=[
  {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
 ];
 
-const PROXY_HOST="https://proxy.vlyx.workers.dev";
+const RSS_FUNCTION_PATH="/api/reddit-rss";
 const ATOM_NS="http://www.w3.org/2005/Atom";
 const MAX_RETRIES=3;
 const RETRY_DELAYS=[1,2,4];
@@ -312,16 +312,16 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 
 async function fetchPost(post,index){
  const rssUrl=makeRssUrl(post.url);
- const proxyUrl=PROXY_HOST+"/?url="+encodeURIComponent(rssUrl);
+ const functionUrl=RSS_FUNCTION_PATH+"?url="+encodeURIComponent(rssUrl);
 
  for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
   try{
    showStatus(`Loading ${index+1}/${POSTS.length}…`);
-   const response=await fetch(proxyUrl,{method:"GET",cache:"no-store"});
+   const response=await fetch(functionUrl,{method:"GET",cache:"no-store"});
    const text=await response.text();
 
    if(!response.ok){
-    if(![429,500,502,503,504].includes(response.status)||attempt===MAX_RETRIES)
+    if(![408,429,500,502,503,504].includes(response.status)||attempt===MAX_RETRIES)
       throw Error("HTTP "+response.status);
    }else{
     return parseFeed(text);
