@@ -159,7 +159,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-const state = { isCjpHidden: false, rawVotes: [] };
+const state = { isCjpHidden: false, votes: { "1": 0, "2": 0, "3": 0, "4": 0 } };
 
 const RELOAD_COOLDOWN_MS = 60 * 1000;
 const CACHE_TIME_KEY = "electionSurvey2029:lastSuccessfulFetch";
@@ -218,12 +218,6 @@ function hideLoading(){
 const bjpBar = $("bar-bjp"), incBar = $("bar-inc"), cjpBar = $("bar-cjp");
 const bjpNum = $("num-bjp"), incNum = $("num-inc"), cjpNum = $("num-cjp");
 
-function effectiveParty(raw){
-  if(raw === "CJP_INDIA") return state.isCjpHidden ? "INDIA" : "CJP";
-  if(raw === "CJP_NDA") return state.isCjpHidden ? "NDA" : "CJP";
-  return raw;
-}
-
 function animateNumber(el, to){
   const from = parseInt(el.textContent, 10) || 0, start = performance.now(), duration = 750;
   function tick(now){
@@ -235,27 +229,42 @@ function animateNumber(el, to){
 }
 
 function render(){
-  const c = { INDIA: 0, NDA: 0, CJP: 0 };
-  state.rawVotes.forEach(v => c[effectiveParty(v)]++);
-  const total = c.INDIA + c.NDA + c.CJP;
+  const v1 = Number(state.votes["1"]) || 0; // INDIA / INC
+  const v2 = Number(state.votes["2"]) || 0; // BJP / NDA
+  const v3 = Number(state.votes["3"]) || 0; // CJP (else INDIA)
+  const v4 = Number(state.votes["4"]) || 0; // CJP (else NDA/BJP)
 
-  const india = total ? Math.round(c.INDIA / total * 100) : 0;
-  const nda = total ? Math.round(c.NDA / total * 100) : 0;
-  const cjp = total ? Math.round(c.CJP / total * 100) : 0;
+  let bjpCount, incCount, cjpCount;
 
-  bjpBar.style.width = nda + "%";
-  incBar.style.width = india + "%";
-  cjpBar.style.width = cjp + "%";
+  if (state.isCjpHidden) {
+    bjpCount = v2 + v4;
+    incCount = v1 + v3;
+    cjpCount = 0;
+  } else {
+    bjpCount = v2;
+    incCount = v1;
+    cjpCount = v3 + v4;
+  }
 
-  animateNumber(bjpNum, nda);
-  animateNumber(incNum, india);
-  animateNumber(cjpNum, cjp);
+  const total = bjpCount + incCount + cjpCount;
+
+  const bjpPercent = total ? Math.round((bjpCount / total) * 100) : 0;
+  const incPercent = total ? Math.round((incCount / total) * 100) : 0;
+  const cjpPercent = total ? Math.round((cjpCount / total) * 100) : 0;
+
+  bjpBar.style.width = bjpPercent + "%";
+  incBar.style.width = incPercent + "%";
+  cjpBar.style.width = cjpPercent + "%";
+
+  animateNumber(bjpNum, bjpPercent);
+  animateNumber(incNum, incPercent);
+  animateNumber(cjpNum, cjpPercent);
 
   // Dynamic ranking: Top position based on who is winning
   const parties = [
-    { id: "row-bjp", score: c.NDA, percent: nda, defaultOrder: 1 },
-    { id: "row-inc", score: c.INDIA, percent: india, defaultOrder: 2 },
-    { id: "cjp-full-row-wrapper", score: c.CJP, percent: cjp, defaultOrder: 3 }
+    { id: "row-bjp", score: bjpCount, percent: bjpPercent, defaultOrder: 1 },
+    { id: "row-inc", score: incCount, percent: incPercent, defaultOrder: 2 },
+    { id: "cjp-full-row-wrapper", score: cjpCount, percent: cjpPercent, defaultOrder: 3 }
   ];
 
   parties.sort((a, b) => {
@@ -281,7 +290,12 @@ async function loadSurvey(){
     const res = await fetch("results.json", { cache: "no-cache" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    state.rawVotes = Array.isArray(data.rawVotes) ? data.rawVotes : [];
+    state.votes = {
+      "1": Number(data["1"] !== undefined ? data["1"] : data.counts?.INDIA) || 0,
+      "2": Number(data["2"] !== undefined ? data["2"] : data.counts?.NDA) || 0,
+      "3": Number(data["3"]) || 0,
+      "4": Number(data["4"] !== undefined ? data["4"] : data.counts?.CJP) || 0
+    };
   } catch (err) {
     console.error("Failed to load results.json:", err);
   }

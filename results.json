@@ -1,17 +1,8 @@
 {
-  "updatedAt": "2026-08-31T13:38:44.226Z",
-  "totalResponses": 1,
-  "rawVotes": [
-    "CJP"
-  ],
-  "counts": {
-    "INDIA": 0,
-    "NDA": 0,
-    "CJP": 1
-  },
-  "percentages": {
-    "INDIA": 0,
-    "NDA": 0,
-    "CJP": 100
-  }
+  "1": 0,
+  "2": 1,
+  "3": 0,
+  "4": 1,
+  "updatedAt": "2026-08-31T14:57:01.924Z",
+  "total": 2
 }

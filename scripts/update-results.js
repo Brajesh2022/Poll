@@ -1,21 +1,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const POSTS_FILE = path.join(__dirname, "..", "posts.json");
 const RESULTS_FILE = path.join(__dirname, "..", "results.json");
 
 const ANSWERS = {
-  "1": "INDIA", "INDIA": "INDIA", "INC": "INDIA", "CONGRESS": "INDIA",
-  "2": "NDA", "NDA": "NDA", "BJP": "NDA",
-  "3": "CJP_INDIA", "4": "CJP_NDA", "CJP": "CJP"
+  "1": "1", "INC": "1", "INDIA": "1", "CONGRESS": "1",
+  "2": "2", "BJP": "2", "NDA": "2",
+  "3": "3", "CJP_INDIA": "3", "CJP (ELSE INDIA)": "3", "CJP(ELSE INDIA)": "3",
+  "4": "4", "CJP_NDA": "4", "CJP_BJP": "4", "CJP (ELSE BJP)": "4", "CJP(ELSE BJP)": "4", "CJP (ELSE NDA)": "4", "CJP(ELSE NDA)": "4", "CJP": "4"
 };
 
 const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (compatible; ElectionSurvey/1.0)",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+  "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"
 ];
 
 function sleep(ms) {
@@ -23,13 +25,8 @@ function sleep(ms) {
 }
 
 function normalizeRedditRssUrl(rawUrl) {
-  const parsed = new URL(rawUrl.trim());
-  parsed.protocol = "https:";
-  parsed.search = "";
-  parsed.hash = "";
-  const cleanPath = parsed.pathname.replace(/\.(rss|json)$/i, "").replace(/\/+$/, "");
-  parsed.pathname = cleanPath + ".rss";
-  return parsed.toString();
+  const u = String(rawUrl || "").trim().replace(/\.(rss|json)$/i, "").replace(/\/+$/, "");
+  return `${u}/.rss`;
 }
 
 function normalizeVote(text) {
@@ -78,7 +75,6 @@ function parseFeedXml(xmlText) {
 
     const contentMatch = /<content\b[^>]*>([\s\S]*?)<\/content>/i.exec(entryBlock);
     const rawContent = contentMatch ? contentMatch[1] : "";
-    // Decode HTML entities if present
     const content = rawContent
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
@@ -99,43 +95,35 @@ function parseFeedXml(xmlText) {
 
 async function fetchRssFeed(url) {
   const canonicalUrl = normalizeRedditRssUrl(url);
-  const candidateHosts = ["www.reddit.com", "old.reddit.com", "reddit.com"];
-  let lastError = null;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const host = candidateHosts[attempt % candidateHosts.length];
-    const targetUrl = new URL(canonicalUrl);
-    targetUrl.hostname = host;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ua = USER_AGENTS[attempt % USER_AGENTS.length];
     try {
-      const res = await fetch(targetUrl.toString(), {
-        headers: {
-          "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length],
-          "Accept": "application/atom+xml, application/xml, text/xml, */*",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        signal: controller.signal
-      });
-      clearTimeout(timer);
+      const cmd = `curl -s -i -A "${ua}" "${canonicalUrl}"`;
+      const res = execSync(cmd, { encoding: "utf-8", timeout: 20000 });
+      const [headers, ...bodyParts] = res.split("\r\n\r\n");
+      const body = bodyParts.join("\r\n\r\n");
+      const statusLine = (headers.split("\r\n")[0] || "").trim();
 
-      if (res.ok) {
-        const text = await res.text();
-        if (text.includes("<feed") || text.includes("<rss") || text.includes("<?xml")) {
-          return parseFeedXml(text);
-        }
+      if (statusLine.includes(" 200") && (body.includes("<feed") || body.includes("<rss") || body.includes("<?xml"))) {
+        return parseFeedXml(body);
+      }
+
+      if (statusLine.includes(" 429")) {
+        const resetMatch = headers.match(/x-ratelimit-reset:\s*(\d+)/i);
+        const resetSec = resetMatch ? Number(resetMatch[1]) : 15;
+        const waitMs = Math.max(5, resetSec + 2) * 1000;
+        console.warn(`Rate limited (429) on ${canonicalUrl}. Waiting ${Math.ceil(waitMs / 1000)}s before retry ${attempt + 1}...`);
+        await sleep(waitMs);
+        continue;
       }
     } catch (err) {
-      clearTimeout(timer);
-      lastError = err;
+      console.warn(`Attempt ${attempt + 1} error for ${canonicalUrl}:`, err.message);
     }
-
-    await sleep(1000 * (attempt + 1));
+    await sleep(2000 * (attempt + 1));
   }
 
-  console.warn(`Could not fetch ${url} live: ${lastError?.message || "unknown error"}`);
+  console.error(`Failed to fetch RSS for ${canonicalUrl} after 5 attempts.`);
   return [];
 }
 
@@ -154,7 +142,7 @@ async function main() {
     for (const e of entries) {
       if (e.type !== "comment") continue;
       const raw = normalizeVote(e.content);
-      if (!raw) continue; // ignore random comments
+      if (!raw) continue; // ignore non-vote comments
 
       const username = (e.author || "").trim().toLowerCase();
       if (!username || username === "[deleted]" || username === "automoderator") continue;
@@ -165,38 +153,31 @@ async function main() {
       const counts = userVotes.get(username);
       counts[raw] = (counts[raw] || 0) + 1;
     }
+
+    if (i < posts.length - 1) {
+      await sleep(2000);
+    }
   }
 
-  const rawVotes = [];
-  for (const counts of userVotes.values()) {
+  const results = { "1": 0, "2": 0, "3": 0, "4": 0 };
+  let totalUniqueVoters = 0;
+
+  for (const [user, counts] of userVotes.entries()) {
     const winner = resolveUserVote(counts);
-    if (winner) {
-      rawVotes.push(winner);
+    console.log(`User @${user} vote summary:`, counts, "-> Resolved:", winner || "IGNORED (tie)");
+    if (winner && results[winner] !== undefined) {
+      results[winner]++;
+      totalUniqueVoters++;
     }
   }
 
-  const counts = { INDIA: 0, NDA: 0, CJP: 0 };
-  for (const vote of rawVotes) {
-    if (vote === "CJP_INDIA" || vote === "CJP_NDA" || vote === "CJP") {
-      counts.CJP++;
-    } else if (vote === "NDA") {
-      counts.NDA++;
-    } else if (vote === "INDIA") {
-      counts.INDIA++;
-    }
-  }
-
-  const total = counts.INDIA + counts.NDA + counts.CJP;
   const resultData = {
     updatedAt: new Date().toISOString(),
-    totalResponses: total,
-    rawVotes,
-    counts,
-    percentages: {
-      INDIA: total ? Math.round((counts.INDIA / total) * 100) : 0,
-      NDA: total ? Math.round((counts.NDA / total) * 100) : 0,
-      CJP: total ? Math.round((counts.CJP / total) * 100) : 0
-    }
+    "1": results["1"],
+    "2": results["2"],
+    "3": results["3"],
+    "4": results["4"],
+    total: totalUniqueVoters
   };
 
   console.log("Result Summary:", JSON.stringify(resultData, null, 2));
