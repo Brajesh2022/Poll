@@ -171,16 +171,35 @@ async function main() {
     }
   }
 
+  let existing = {};
+  try {
+    const existingRaw = await fs.readFile(RESULTS_FILE, "utf-8");
+    existing = JSON.parse(existingRaw);
+  } catch (e) {}
+
+  const hasChanged = (
+    Number(existing["1"]) !== results["1"] ||
+    Number(existing["2"]) !== results["2"] ||
+    Number(existing["3"]) !== results["3"] ||
+    Number(existing["4"]) !== results["4"] ||
+    Number(existing.total) !== totalUniqueVoters
+  );
+
+  if (!hasChanged) {
+    console.log("No changes in vote counts. results.json remains untouched (no commit needed).");
+    return;
+  }
+
   const resultData = {
-    updatedAt: new Date().toISOString(),
     "1": results["1"],
     "2": results["2"],
     "3": results["3"],
     "4": results["4"],
+    updatedAt: new Date().toISOString(),
     total: totalUniqueVoters
   };
 
-  console.log("Result Summary:", JSON.stringify(resultData, null, 2));
+  console.log("Vote counts updated! Writing to results.json:", JSON.stringify(resultData, null, 2));
   await fs.writeFile(RESULTS_FILE, JSON.stringify(resultData, null, 2) + "\n", "utf-8");
   console.log("Successfully wrote results to:", RESULTS_FILE);
 }
