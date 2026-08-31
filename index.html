@@ -182,15 +182,29 @@
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
 
-const POSTS=[
+let POSTS=[
  {id:"choose-1",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3auzc/choose/"},
  {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
 ];
 
+async function loadPostsConfig(){
+ try{
+  const res=await fetch("posts.json",{cache:"no-cache"});
+  if(res.ok){
+   const data=await res.json();
+   if(Array.isArray(data)&&data.length>0){
+    POSTS=data;
+   }
+  }
+ }catch(e){
+  // Keep fallback POSTS
+ }
+}
+
 const RSS_ENDPOINT="/api/rss";
 const ATOM_NS="http://www.w3.org/2005/Atom";
-const MAX_RETRIES=3;
-const RETRY_DELAYS=[1,2,4];
+const MAX_RETRIES=1;
+const RETRY_DELAYS=[3];
 
 const ANSWERS={
  "1":"INDIA","INDIA":"INDIA","INC":"INDIA","CONGRESS":"INDIA",
@@ -331,7 +345,7 @@ async function fetchPost(post,index,forceFresh=false){
    if(attempt===MAX_RETRIES)throw error;
   }
 
-  const seconds=RETRY_DELAYS[attempt]||4;
+  const seconds=RETRY_DELAYS[attempt]||3;
   for(let n=seconds;n>0;n--){
    showStatus(`Retrying in ${n}s…`);
    await sleep(1000);
@@ -379,8 +393,30 @@ function resolveUserVote(counts){
  return isTie?null:winner;
 }
 
+async function loadBakedFallbackResults(){
+ try{
+  showLoading("Loading Fallback","Fetching baked survey results…");
+  const res=await fetch("results.json",{cache:"no-cache"});
+  if(!res.ok) throw Error("HTTP "+res.status);
+  const data=await res.json();
+  if(data&&Array.isArray(data.rawVotes)&&data.rawVotes.length>0){
+   state.rawVotes=data.rawVotes;
+   render();
+   setLastFetchTime();
+   startReloadCooldown();
+   showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses (Backup)`);
+   setTimeout(hideStatus,1000);
+   return true;
+  }
+ }catch(e){
+  // Fallback failed
+ }
+ return false;
+}
+
 async function loadSurvey(forceFresh=false){
  showLoading(forceFresh?"Refreshing Survey":"Loading Survey",forceFresh?"Fetching fresh Reddit data…":"Fetching Reddit data…");
+ await loadPostsConfig();
  state.rawVotes=[];
  bjpBar.style.width=incBar.style.width=cjpBar.style.width="0%";
  bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
@@ -388,6 +424,7 @@ async function loadSurvey(forceFresh=false){
 
  const userVotes=new Map();
  let hadCachedResults=false;
+ let successfulPosts=0;
 
  for(let i=0;i<POSTS.length;i++){
   try{
@@ -406,10 +443,10 @@ async function loadSurvey(forceFresh=false){
     const counts=userVotes.get(username);
     counts[raw]=(counts[raw]||0)+1;
    });
+   successfulPosts++;
    showStatus(`Loading ${i+1}/${POSTS.length}…`);
-   // Results remain covered until every post has finished.
   }catch(e){
-   // A failed post is ignored rather than counted as zero votes.
+   // Failed post
   }
  }
 
@@ -418,6 +455,12 @@ async function loadSurvey(forceFresh=false){
   if(vote){
    state.rawVotes.push(vote);
   }
+ }
+
+ // If all posts failed live fetch, fall back to baked results.json
+ if(successfulPosts===0){
+  const usedFallback=await loadBakedFallbackResults();
+  if(usedFallback) return;
  }
 
  // If cached results yielded fewer than 50 responders, immediately fetch fresh live results
