@@ -2,9 +2,8 @@ name: Update Survey Results
 
 on:
   schedule:
-    # 5-minute schedules with 2-minute offset to maximize trigger reliability on GitHub Actions
-    - cron: '*/5 * * * *'
-    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
+    # Backup trigger every 6 hours in case runner restarts
+    - cron: '0 */6 * * *'
   workflow_dispatch:
   push:
     branches:
@@ -15,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: update-survey-results
@@ -23,6 +23,7 @@ concurrency:
 jobs:
   update-results:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,27 +35,34 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run continuous 2-minute update loop
+      - name: Run 6-hour continuous polling loop (checks every 2 min)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Run 4 iterations (every 2 minutes) covering ~6-8 minutes
-          for i in 1 2 3 4; do
-            echo "=== Starting update iteration $i at $(date -u) ==="
+          # Run 170 iterations (every 2 minutes) covering ~5.7 hours per runner
+          MAX_ITERATIONS=170
+          for ((i=1; i<=MAX_ITERATIONS; i++)); do
+            echo "=== Iteration $i / $MAX_ITERATIONS at $(date -u) ==="
             node scripts/update-results.js
             
             git add results.json
             if git diff --staged --quiet; then
-              echo "No changes to results.json in iteration $i"
+              echo "No voting count changes. Skipping commit."
             else
+              echo "Voting count changed! Committing and pushing updates..."
               git commit -m "chore: update survey results [skip ci]"
               git pull --rebase origin main || true
               git push
             fi
             
-            if [ "$i" -lt 4 ]; then
-              echo "Waiting 120 seconds before next check..."
+            if [ "$i" -lt "$MAX_ITERATIONS" ]; then
               sleep 120
             fi
           done
+          
+          # Automatically trigger next 6-hour cycle seamlessly
+          echo "6-hour session complete. Triggering next cycle..."
+          gh workflow run update-results.yml || true
