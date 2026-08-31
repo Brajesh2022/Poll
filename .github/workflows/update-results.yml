@@ -2,8 +2,9 @@ name: Update Survey Results
 
 on:
   schedule:
-    # GitHub Actions cron: 5 minutes with internal 2-minute loop
+    # 5-minute schedules with 2-minute offset to maximize trigger reliability on GitHub Actions
     - cron: '*/5 * * * *'
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
   workflow_dispatch:
   push:
     branches:
@@ -14,6 +15,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: update-survey-results
+  cancel-in-progress: false
 
 jobs:
   update-results:
@@ -29,14 +34,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run 2-minute update loop
+      - name: Run continuous 2-minute update loop
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Run 2 iterations (every 2 minutes) per 5-minute scheduled run
-          for i in 1 2; do
-            echo "=== Starting update iteration $i ==="
+          # Run 4 iterations (every 2 minutes) covering ~6-8 minutes
+          for i in 1 2 3 4; do
+            echo "=== Starting update iteration $i at $(date -u) ==="
             node scripts/update-results.js
             
             git add results.json
@@ -48,7 +53,7 @@ jobs:
               git push
             fi
             
-            if [ "$i" -lt 2 ]; then
+            if [ "$i" -lt 4 ]; then
               echo "Waiting 120 seconds before next check..."
               sleep 120
             fi
