@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-31T13:46:09.850Z",
+  "updatedAt": "2026-08-31T13:38:44.226Z",
   "totalResponses": 1,
   "rawVotes": [
     "NDA"
   ],
   "counts": {
     "INDIA": 0,
-    "NDA": 1,
-    "CJP": 0
+    "NDA": 0,
+    "CJP": 1
   },
   "percentages": {
     "INDIA": 0,
-    "NDA": 100,
-    "CJP": 0
+    "NDA": 0,
+    "CJP": 100
   }
 }
