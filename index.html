@@ -180,409 +180,244 @@
 </main>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const POSTS = [
-    {id:"choose-1",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3auzc/choose/"},
-    {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
-  ];
+document.addEventListener('DOMContentLoaded',()=>{
 
-  const PROXY_HOST = "https://proxy.vlyx.workers.dev";
-  const ATOM_NS = "http://www.w3.org/2005/Atom";
-  const MAX_RETRIES = 3;
-  const RETRY_DELAYS = [1,2,4];
+const POSTS=[
+ {id:"choose-1",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3auzc/choose/"},
+ {id:"choose-2",url:"https://www.reddit.com/user/Calm-Alarm7977/comments/1w3av3g/choose/"}
+];
 
-  const ANSWERS = {
-    "1":"INDIA","INDIA":"INDIA","INC":"INDIA","CONGRESS":"INDIA",
-    "2":"NDA","NDA":"NDA","BJP":"NDA",
-    "3":"CJP_INDIA","4":"CJP_NDA","CJP":"CJP"
-  };
+const PROXY_HOST="https://proxy.vlyx.workers.dev";
+const ATOM_NS="http://www.w3.org/2005/Atom";
+const MAX_RETRIES=3;
+const RETRY_DELAYS=[1,2,4];
 
-  const state = {
-    isCjpHidden:false,
-    rawVotes:[],
-    allRawVotes:[]
-  };
+const ANSWERS={
+ "1":"INDIA","INDIA":"INDIA","INC":"INDIA","CONGRESS":"INDIA",
+ "2":"NDA","NDA":"NDA","BJP":"NDA",
+ "3":"CJP_INDIA","4":"CJP_NDA","CJP":"CJP"
+};
 
-  const $ = id => document.getElementById(id);
-  const bjpBar=$("bar-bjp"), incBar=$("bar-inc"), cjpBar=$("bar-cjp");
-  const bjpNum=$("num-bjp"), incNum=$("num-inc"), cjpNum=$("num-cjp");
+const state={isCjpHidden:false,rawVotes:[]};
 
-  const loadingCover=$("data-loading-cover");
-  const loadingTitle=$("loading-title");
-  const loadingDetail=$("loading-detail");
+const RELOAD_COOLDOWN_MS = 60 * 1000;
+const CACHE_TIME_KEY = "electionSurvey2029:lastSuccessfulFetch";
+let reloadTimer = null;
 
-  function showLoading(title,detail){
-    loadingTitle.textContent=title;
-    loadingDetail.textContent=detail;
-    loadingCover.classList.remove("hidden");
+function getLastFetchTime(){
+  const value = Number(localStorage.getItem(CACHE_TIME_KEY));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function setLastFetchTime(){
+  localStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+}
+
+function updateReloadButton(){
+  const button = $("reload-poll-btn");
+  const countdown = $("reload-countdown");
+  const remaining = Math.max(0, RELOAD_COOLDOWN_MS - (Date.now() - getLastFetchTime()));
+
+  if(remaining > 0){
+    button.disabled = true;
+    countdown.textContent = "(" + Math.ceil(remaining / 1000) + "s)";
+    return false;
   }
 
-  function hideLoading(){
-    loadingCover.classList.add("hidden");
-  }
+  button.disabled = false;
+  countdown.textContent = "";
+  return true;
+}
 
-  function makeRssUrl(value){
-    const url=new URL(value.trim());
-    if(!/(^|\.)reddit\.com$/i.test(url.hostname)) throw Error("Not a Reddit URL");
-    url.search="";
-    url.hash="";
-    url.pathname=url.pathname
-      .replace(/\.(rss|json)$/i,"")
-      .replace(/\/+$/,"")+".rss";
-    return url.href;
-  }
-
-  function children(parent,name){
-    return Array.from(parent.children).filter(el =>
-      el.localName===name &&
-      (el.namespaceURI===ATOM_NS || !el.namespaceURI)
-    );
-  }
-
-  function child(parent,name){
-    return children(parent,name)[0] || null;
-  }
-
-  function textChild(parent,name){
-    const el=child(parent,name);
-    return el ? el.textContent.trim() : "";
-  }
-
-  function parseFeed(xmlText){
-    const xml=new DOMParser().parseFromString(xmlText,"application/xml");
-
-    if(xml.getElementsByTagName("parsererror").length)
-      throw Error("Invalid RSS");
-
-    if(!xml.documentElement || xml.documentElement.localName!=="feed")
-      throw Error("Not an Atom feed");
-
-    return children(xml.documentElement,"entry").map(entry=>{
-      const id=textChild(entry,"id");
-      const authorEl=child(entry,"author");
-      const contentEl=child(entry,"content");
-      const linkEl=children(entry,"link").find(el=>el.getAttribute("href"));
-
-      return {
-        id,
-        type:id.startsWith("t3_")?"post":
-             id.startsWith("t1_")?"comment":"other",
-        content:contentEl ? contentEl.textContent : "",
-        author:authorEl ? textChild(authorEl,"name").replace(/^\/u\//,"") : "",
-        link:linkEl ? linkEl.getAttribute("href") : ""
-      };
-    });
-  }
-
-  function normalizeVote(text){
-    const value=String(text||"")
-      .replace(/<[^>]*>/g," ")
-      .replace(/&nbsp;/gi," ")
-      .trim()
-      .toUpperCase()
-      .replace(/\s+/g," ");
-
-    const clean=value.replace(
-      /^[\s"'`*_.,:;!?()[\]{}<>-]+|[\s"'`*_.,:;!?()[\]{}<>-]+$/g,
-      ""
-    );
-
-    return ANSWERS[clean] || null;
-  }
-
-  function sleep(ms){
-    return new Promise(resolve=>setTimeout(resolve,ms));
-  }
-
-  async function fetchPost(post,index){
-    const rssUrl=makeRssUrl(post.url);
-    const proxyUrl=PROXY_HOST+"/?url="+encodeURIComponent(rssUrl);
-
-    for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
-      try{
-        showLoading(
-          "LOADING SURVEY",
-          `Fetching ${index+1}/${POSTS.length}…`
-        );
-
-        const response=await fetch(proxyUrl,{
-          method:"GET",
-          cache:"no-store"
-        });
-
-        const text=await response.text();
-
-        if(!response.ok){
-          const retryable=[429,500,502,503,504].includes(response.status);
-
-          if(!retryable || attempt===MAX_RETRIES)
-            throw Error("HTTP "+response.status);
-        }else{
-          return parseFeed(text);
-        }
-      }catch(error){
-        if(attempt===MAX_RETRIES) throw error;
-      }
-
-      const seconds=RETRY_DELAYS[attempt] || 4;
-
-      for(let remaining=seconds;remaining>0;remaining--){
-        showLoading("RETRYING",`Retrying in ${remaining}s…`);
-        await sleep(1000);
-      }
+function startReloadCooldown(){
+  if(reloadTimer) clearInterval(reloadTimer);
+  updateReloadButton();
+  reloadTimer = setInterval(function(){
+    if(updateReloadButton()){
+      clearInterval(reloadTimer);
+      reloadTimer = null;
     }
+  }, 250);
+}
 
-    throw Error("Fetch failed");
+const $=id=>document.getElementById(id);
+const loadingCover=$("data-loading-cover");
+const loadingTitle=$("loading-title");
+const loadingDetail=$("loading-detail");
+
+function showLoading(title,detail){
+  loadingTitle.textContent=title;
+  loadingDetail.textContent=detail;
+  loadingCover.classList.remove("hidden");
+}
+function hideLoading(){
+  loadingCover.classList.add("hidden");
+}
+const bjpBar=$("bar-bjp"),incBar=$("bar-inc"),cjpBar=$("bar-cjp");
+const bjpNum=$("num-bjp"),incNum=$("num-inc"),cjpNum=$("num-cjp");
+
+const status=document.createElement("div");
+status.className="hidden";
+status.innerHTML='<span class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span><span id="live-status"></span>';
+document.body.appendChild(status);
+
+function showStatus(text){
+  $("live-status").textContent=text;
+  status.classList.remove("opacity-0");status.classList.add("opacity-100");
+  if (text.startsWith("Retrying")) {
+    showLoading("Retrying", text.replace("Retrying ",""));
+  } else {
+    showLoading("Loading Survey", text);
+  }
+}
+function hideStatus(){status.classList.remove("opacity-100");status.classList.add("opacity-0");hideLoading()}
+
+function makeRssUrl(value){
+ const url=new URL(value.trim());
+ if(!/(^|\.)reddit\.com$/i.test(url.hostname))throw Error("Not a Reddit URL");
+ url.search="";url.hash="";
+ url.pathname=url.pathname.replace(/\.(rss|json)$/i,"").replace(/\/+$/,"")+".rss";
+ return url.href;
+}
+function children(parent,name){
+ return Array.from(parent.children).filter(el=>el.localName===name&&(el.namespaceURI===ATOM_NS||!el.namespaceURI));
+}
+function child(parent,name){return children(parent,name)[0]||null}
+function textChild(parent,name){const el=child(parent,name);return el?el.textContent.trim():""}
+
+function parseFeed(xmlText){
+ const xml=new DOMParser().parseFromString(xmlText,"application/xml");
+ if(xml.getElementsByTagName("parsererror").length)throw Error("Invalid RSS");
+ if(!xml.documentElement||xml.documentElement.localName!=="feed")throw Error("Not an Atom feed");
+ return children(xml.documentElement,"entry").map(entry=>{
+  const id=textChild(entry,"id"),authorEl=child(entry,"author"),contentEl=child(entry,"content");
+  const linkEl=children(entry,"link").find(el=>el.getAttribute("href"));
+  return {id,type:id.startsWith("t3_")?"post":id.startsWith("t1_")?"comment":"other",
+   content:contentEl?contentEl.textContent:"",author:authorEl?textChild(authorEl,"name").replace(/^\/u\//,""):"",
+   link:linkEl?linkEl.getAttribute("href"):""};
+ });
+}
+
+function normalizeVote(text){
+ const value=String(text||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ").trim().toUpperCase().replace(/\s+/g," ");
+ const clean=value.replace(/^[\s"'`*_.,:;!?()[\]{}<>-]+|[\s"'`*_.,:;!?()[\]{}<>-]+$/g,"");
+ return ANSWERS[clean]||null;
+}
+function effectiveParty(raw){
+ if(raw==="CJP_INDIA")return state.isCjpHidden?"INDIA":"CJP";
+ if(raw==="CJP_NDA")return state.isCjpHidden?"NDA":"CJP";
+ return raw;
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+async function fetchPost(post,index){
+ const rssUrl=makeRssUrl(post.url);
+ const proxyUrl=PROXY_HOST+"/?url="+encodeURIComponent(rssUrl);
+
+ for(let attempt=0;attempt<=MAX_RETRIES;attempt++){
+  try{
+   showStatus(`Loading ${index+1}/${POSTS.length}…`);
+   const response=await fetch(proxyUrl,{method:"GET",cache:"no-store"});
+   const text=await response.text();
+
+   if(!response.ok){
+    if(![429,500,502,503,504].includes(response.status)||attempt===MAX_RETRIES)
+      throw Error("HTTP "+response.status);
+   }else{
+    return parseFeed(text);
+   }
+  }catch(error){
+   if(attempt===MAX_RETRIES)throw error;
   }
 
-  /*
-    Only exact allowed answers become votes.
-    Random comments are discarded.
-  */
-  function processEntries(entries){
-    const votes=[];
-
-    entries
-      .filter(entry=>entry.type==="comment")
-      .forEach(entry=>{
-        const raw=normalizeVote(entry.content);
-        if(!raw) return;
-
-        /*
-          A username is required because the final aggregation enforces
-          one-user-one-vote.
-        */
-        const username=(entry.author||"").trim().toLowerCase();
-        if(!username) return;
-
-        votes.push({
-          username,
-          raw
-        });
-      });
-
-    return votes;
+  const seconds=RETRY_DELAYS[attempt]||4;
+  for(let n=seconds;n>0;n--){
+   showStatus(`Retrying in ${n}s…`);
+   await sleep(1000);
   }
+ }
+ throw Error("Fetch failed");
+}
 
-  /*
-    ONE USER = ONE VOTE.
+function animateNumber(el,to){
+ const from=parseInt(el.textContent,10)||0,start=performance.now(),duration=750;
+ function tick(now){
+  const p=Math.min((now-start)/duration,1),e=1-Math.pow(1-p,3);
+  el.textContent=Math.round(from+(to-from)*e);
+  if(p<1)requestAnimationFrame(tick);
+ }
+ requestAnimationFrame(tick);
+}
 
-    If a user appears in several tracked posts:
-      - count each exact answer they used
-      - choose the answer with the highest frequency
-      - if two or more answers tie for highest frequency, ignore that user
+function render(){
+ const c={INDIA:0,NDA:0,CJP:0};
+ state.rawVotes.forEach(v=>c[effectiveParty(v)]++);
+ const total=c.INDIA+c.NDA+c.CJP;
 
-    Example:
-      user: 1, 1, NDA -> INDIA
-      user: BJP, NDA, NDA -> NDA
-      user: 1, NDA -> ignored (tie)
-  */
-  function resolveOneVotePerUser(votes){
-    const byUser=new Map();
+ const india=total?Math.round(c.INDIA/total*100):0;
+ const nda=total?Math.round(c.NDA/total*100):0;
+ const cjp=total?Math.round(c.CJP/total*100):0;
 
-    votes.forEach(vote=>{
-      if(!byUser.has(vote.username))
-        byUser.set(vote.username,[]);
+ bjpBar.style.width=india+"%";incBar.style.width=nda+"%";cjpBar.style.width=cjp+"%";
+ animateNumber(bjpNum,india);animateNumber(incNum,nda);animateNumber(cjpNum,cjp);
+ $("resp-count").textContent=total.toLocaleString("en-IN");
+}
 
-      byUser.get(vote.username).push(vote.raw);
-    });
+async function loadSurvey(){
+ showLoading("Loading Survey","Fetching Reddit data…");
+ state.rawVotes=[];
+ bjpBar.style.width=incBar.style.width=cjpBar.style.width="0%";
+ bjpNum.textContent=incNum.textContent=cjpNum.textContent="0";
+ showStatus(`Loading 0/${POSTS.length}…`);
 
-    const resolved=[];
-    let ambiguous=0;
-
-    byUser.forEach((choices,username)=>{
-      const frequency=new Map();
-
-      choices.forEach(choice=>{
-        frequency.set(choice,(frequency.get(choice)||0)+1);
-      });
-
-      let highest=0;
-      let winners=[];
-
-      frequency.forEach((count,choice)=>{
-        if(count>highest){
-          highest=count;
-          winners=[choice];
-        }else if(count===highest){
-          winners.push(choice);
-        }
-      });
-
-      if(winners.length!==1){
-        ambiguous++;
-        return;
-      }
-
-      resolved.push({
-        username,
-        raw:winners[0]
-      });
-    });
-
-    return {resolved,ambiguous};
+ for(let i=0;i<POSTS.length;i++){
+  try{
+   const entries=await fetchPost(POSTS[i],i);
+   entries.filter(e=>e.type==="comment").forEach(e=>{
+    const raw=normalizeVote(e.content);
+    if(raw)state.rawVotes.push(raw);
+   });
+   showStatus(`Loading ${i+1}/${POSTS.length}…`);
+   // Results remain covered until every post has finished.
+  }catch(e){
+   // A failed post is ignored rather than counted as zero votes.
   }
+ }
 
-  function effectiveParty(raw){
-    if(raw==="CJP_INDIA")
-      return state.isCjpHidden ? "INDIA" : "CJP";
+ render();
+ setLastFetchTime();
+ startReloadCooldown();
+ showStatus(`${state.rawVotes.length.toLocaleString("en-IN")} responses`);
+ setTimeout(hideStatus,900);
+}
 
-    if(raw==="CJP_NDA")
-      return state.isCjpHidden ? "NDA" : "CJP";
+function setCjpHidden(hidden){
+ state.isCjpHidden=hidden;
+ const wrapper=$("cjp-full-row-wrapper"),restore=$("cjp-restore-container");
 
-    return raw;
-  }
+ if(hidden){
+  wrapper.style.maxHeight=wrapper.scrollHeight+"px";
+  requestAnimationFrame(()=>{wrapper.style.maxHeight="0px";wrapper.style.opacity="0";wrapper.style.transform="scaleY(.85)";wrapper.style.pointerEvents="none"});
+  setTimeout(()=>{wrapper.classList.add("hidden");restore.classList.remove("hidden")},350);
+ }else{
+  restore.classList.add("hidden");wrapper.classList.remove("hidden");
+  wrapper.style.maxHeight="0px";wrapper.style.opacity="0";wrapper.style.transform="scaleY(.85)";
+  requestAnimationFrame(()=>{wrapper.style.maxHeight="140px";wrapper.style.opacity="1";wrapper.style.transform="scaleY(1)"});
+ }
+ render();
+}
 
-  function animateNumber(el,to){
-    const from=parseInt(el.textContent,10)||0;
-    const start=performance.now();
-    const duration=750;
+$("hide-cjp-btn").addEventListener("click",()=>setCjpHidden(true));
+$("restore-cjp-btn").addEventListener("click",()=>setCjpHidden(false));
+$("reload-poll-btn").addEventListener("click",()=>{
+ if(!updateReloadButton()) return;
+ const icon=$("reload-icon");
+ icon.classList.add("rotate-180");
+ setTimeout(()=>icon.classList.remove("rotate-180"),500);
+ loadSurvey();
+});
 
-    function tick(now){
-      const progress=Math.min((now-start)/duration,1);
-      const ease=1-Math.pow(1-progress,3);
-      el.textContent=Math.round(from+(to-from)*ease);
-
-      if(progress<1)
-        requestAnimationFrame(tick);
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  function render(){
-    const counts={INDIA:0,NDA:0,CJP:0};
-
-    state.rawVotes.forEach(raw=>{
-      counts[effectiveParty(raw)]++;
-    });
-
-    const total=counts.INDIA+counts.NDA+counts.CJP;
-
-    const india=total ? Math.round(counts.INDIA/total*100) : 0;
-    const nda=total ? Math.round(counts.NDA/total*100) : 0;
-    const cjp=total ? Math.round(counts.CJP/total*100) : 0;
-
-    bjpBar.style.width=india+"%";
-    incBar.style.width=nda+"%";
-    cjpBar.style.width=cjp+"%";
-
-    animateNumber(bjpNum,india);
-    animateNumber(incNum,nda);
-    animateNumber(cjpNum,cjp);
-
-    $("resp-count").textContent=total.toLocaleString("en-IN");
-  }
-
-  async function loadSurvey(){
-    showLoading("LOADING SURVEY","Fetching Reddit data…");
-
-    state.rawVotes=[];
-    state.allRawVotes=[];
-
-    bjpBar.style.width="0%";
-    incBar.style.width="0%";
-    cjpBar.style.width="0%";
-    bjpNum.textContent="0";
-    incNum.textContent="0";
-    cjpNum.textContent="0";
-
-    let failed=0;
-
-    /*
-      Sequential requests reduce the chance of overwhelming the proxy.
-    */
-    for(let i=0;i<POSTS.length;i++){
-      try{
-        const entries=await fetchPost(POSTS[i],i);
-        state.allRawVotes.push(...processEntries(entries));
-
-        showLoading(
-          "LOADING SURVEY",
-          `${i+1}/${POSTS.length} posts processed…`
-        );
-      }catch(error){
-        failed++;
-      }
-    }
-
-    /*
-      Do the one-user-one-vote decision only after ALL posts have been
-      collected, so votes from different posts can be compared.
-    */
-    const result=resolveOneVotePerUser(state.allRawVotes);
-    state.rawVotes=result.resolved.map(vote=>vote.raw);
-
-    render();
-
-    /*
-      Keep the results hidden until the entire collection + aggregation
-      process is complete.
-    */
-    if(failed){
-      showLoading(
-        "SURVEY READY",
-        `${state.rawVotes.length.toLocaleString("en-IN")} votes • ${failed} post unavailable`
-      );
-    }else{
-      showLoading(
-        "SURVEY READY",
-        `${state.rawVotes.length.toLocaleString("en-IN")} votes`
-      );
-    }
-
-    setTimeout(hideLoading,900);
-  }
-
-  function setCjpHidden(hidden){
-    state.isCjpHidden=hidden;
-
-    const wrapper=$("cjp-full-row-wrapper");
-    const restore=$("cjp-restore-container");
-
-    if(hidden){
-      wrapper.style.maxHeight=wrapper.scrollHeight+"px";
-      wrapper.style.opacity="1";
-
-      requestAnimationFrame(()=>{
-        wrapper.style.maxHeight="0px";
-        wrapper.style.opacity="0";
-        wrapper.style.transform="scaleY(.85)";
-        wrapper.style.pointerEvents="none";
-      });
-
-      setTimeout(()=>{
-        wrapper.classList.add("hidden");
-        restore.classList.remove("hidden");
-      },350);
-    }else{
-      restore.classList.add("hidden");
-      wrapper.classList.remove("hidden");
-      wrapper.style.maxHeight="0px";
-      wrapper.style.opacity="0";
-      wrapper.style.transform="scaleY(.85)";
-
-      requestAnimationFrame(()=>{
-        wrapper.style.maxHeight="140px";
-        wrapper.style.opacity="1";
-        wrapper.style.transform="scaleY(1)";
-      });
-    }
-
-    render();
-  }
-
-  $("hide-cjp-btn").addEventListener("click",()=>setCjpHidden(true));
-  $("restore-cjp-btn").addEventListener("click",()=>setCjpHidden(false));
-
-  $("reload-poll-btn").addEventListener("click",()=>{
-    const icon=$("reload-icon");
-    icon.classList.add("rotate-180");
-    setTimeout(()=>icon.classList.remove("rotate-180"),500);
-    loadSurvey();
-  });
-
-  loadSurvey();
+loadSurvey();
 });
 </script>
 </body>
